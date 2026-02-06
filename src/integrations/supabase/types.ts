@@ -255,6 +255,69 @@ export type Database = {
         }
         Relationships: []
       }
+      quality_incidents: {
+        Row: {
+          action_taken: string | null
+          created_at: string
+          created_by: string
+          description: string
+          driver_id: string | null
+          id: string
+          incident_date: string
+          incident_type: Database["public"]["Enums"]["incident_type"]
+          source: string | null
+          status: Database["public"]["Enums"]["incident_status"]
+          updated_at: string
+          updated_by: string | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          created_at?: string
+          created_by: string
+          description: string
+          driver_id?: string | null
+          id?: string
+          incident_date?: string
+          incident_type: Database["public"]["Enums"]["incident_type"]
+          source?: string | null
+          status?: Database["public"]["Enums"]["incident_status"]
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          driver_id?: string | null
+          id?: string
+          incident_date?: string
+          incident_type?: Database["public"]["Enums"]["incident_type"]
+          source?: string | null
+          status?: Database["public"]["Enums"]["incident_status"]
+          updated_at?: string
+          updated_by?: string | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_incidents_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quality_incidents_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -420,6 +483,15 @@ export type Database = {
         | "contract_manager"
         | "hardware_ops"
         | "support"
+      incident_status: "new" | "investigating" | "resolved" | "closed"
+      incident_type:
+        | "customer_complaint"
+        | "service_quality"
+        | "vehicle_condition"
+        | "driver_behavior"
+        | "safety_issue"
+        | "billing_issue"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -555,6 +627,16 @@ export const Constants = {
         "contract_manager",
         "hardware_ops",
         "support",
+      ],
+      incident_status: ["new", "investigating", "resolved", "closed"],
+      incident_type: [
+        "customer_complaint",
+        "service_quality",
+        "vehicle_condition",
+        "driver_behavior",
+        "safety_issue",
+        "billing_issue",
+        "other",
       ],
     },
   },

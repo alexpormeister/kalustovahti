@@ -7,8 +7,8 @@ import {
   Settings,
   LogOut,
   Tag,
-  CreditCard,
   Smartphone,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +19,7 @@ const navigation = [
   { name: "Laitevarasto", href: "/laitteet", icon: Smartphone },
   { name: "Kuljettajat", href: "/kuljettajat", icon: Users },
   { name: "Attribuutit", href: "/varustelu", icon: Tag },
+  { name: "Laadunvalvonta", href: "/laadunvalvonta", icon: ClipboardCheck },
   { name: "Asetukset", href: "/asetukset", icon: Settings },
   { name: "Käyttäjät", href: "/kayttajat", icon: Users },
 ];
