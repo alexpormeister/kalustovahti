@@ -429,7 +429,7 @@ export default function Hardware() {
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button
-                className="gap-2"
+                className="gap-2 w-full sm:w-auto"
                 onClick={() => {
                   resetForm();
                   setFormData((prev) => ({ ...prev, device_type: activeTab }));
@@ -439,7 +439,7 @@ export default function Hardware() {
                 Lisää laite
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Lisää uusi laite</DialogTitle>
               </DialogHeader>
@@ -582,7 +582,7 @@ export default function Hardware() {
             }
           }}
         >
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 Muokkaa laitetta: {selectedDevice?.serial_number}
