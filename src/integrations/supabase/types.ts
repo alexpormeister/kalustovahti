@@ -171,6 +171,56 @@ export type Database = {
           },
         ]
       }
+      drivers: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          driver_license_valid_until: string | null
+          driver_number: string
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          driver_license_valid_until?: string | null
+          driver_number: string
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          driver_license_valid_until?: string | null
+          driver_number?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drivers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hardware_devices: {
         Row: {
           company_id: string | null
@@ -306,7 +356,7 @@ export type Database = {
             foreignKeyName: "quality_incidents_driver_id_fkey"
             columns: ["driver_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "drivers"
             referencedColumns: ["id"]
           },
           {
@@ -508,6 +558,13 @@ export type Database = {
           vehicle_number?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "vehicles_assigned_driver_id_fkey"
+            columns: ["assigned_driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vehicles_company_id_fkey"
             columns: ["company_id"]
