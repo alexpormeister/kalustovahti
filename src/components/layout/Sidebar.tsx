@@ -7,15 +7,18 @@ import {
   Settings,
   LogOut,
   Tag,
+  CreditCard,
+  Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "Hallintapaneeli", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Autot", href: "/autot", icon: Car },
+  { name: "Autoilijat", href: "/autoilijat", icon: Building2 },
+  { name: "Kalustolista", href: "/kalusto", icon: Car },
+  { name: "Laitevarasto", href: "/laitteet", icon: Smartphone },
   { name: "Kuljettajat", href: "/kuljettajat", icon: Users },
-  { name: "Yritykset", href: "/yritykset", icon: Building2 },
-  { name: "Ominaisuudet", href: "/ominaisuudet", icon: Tag },
+  { name: "Varustelu", href: "/varustelu", icon: Tag },
   { name: "Asetukset", href: "/asetukset", icon: Settings },
 ];
 
@@ -35,11 +38,11 @@ export function Sidebar({ onLogout }: SidebarProps) {
             <Car className="h-5 w-5 text-sidebar-primary-foreground" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-sidebar-foreground">
-              Fleet Manager
+            <span className="text-sm font-semibold text-sidebar-primary">
+              Lähitaksi
             </span>
             <span className="text-xs text-sidebar-foreground/60">
-              Taksikalusto
+              Kumppanihallinta
             </span>
           </div>
         </div>
