@@ -35,9 +35,11 @@ const navigation: NavigationItem[] = [
 
 interface SidebarProps {
   onLogout?: () => void;
+  onNavigate?: () => void;
+  isMobile?: boolean;
 }
 
-export function Sidebar({ onLogout }: SidebarProps) {
+export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
   const location = useLocation();
   const { isSystemAdmin, permissions, isLoading } = usePermissions();
 
@@ -47,32 +49,44 @@ export function Sidebar({ onLogout }: SidebarProps) {
     return permissions[item.pageKey]?.can_view;
   });
 
+  const handleNavClick = () => {
+    if (onNavigate) {
+      onNavigate();
+    }
+  };
+
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
+    <aside className={cn(
+      "bg-sidebar border-r border-sidebar-border",
+      isMobile ? "h-full w-full" : "fixed left-0 top-0 z-40 h-screen w-64"
+    )}>
       <div className="flex h-full flex-col">
-        {/* Logo */}
-        <div className="flex h-16 items-center gap-3 px-6 border-b border-sidebar-border">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Car className="h-5 w-5 text-sidebar-primary-foreground" />
+        {/* Logo - only show on desktop */}
+        {!isMobile && (
+          <div className="flex h-16 items-center gap-3 px-6 border-b border-sidebar-border">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
+              <Car className="h-5 w-5 text-sidebar-primary-foreground" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-sidebar-primary">
+                Lähitaksi
+              </span>
+              <span className="text-xs text-sidebar-foreground/60">
+                Kumppanihallinta
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold text-sidebar-primary">
-              Lähitaksi
-            </span>
-            <span className="text-xs text-sidebar-foreground/60">
-              Kumppanihallinta
-            </span>
-          </div>
-        </div>
+        )}
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className={cn("flex-1 space-y-1 px-3", isMobile ? "py-6" : "py-4")}>
           {visibleNavigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link
                 key={item.name}
                 to={item.href}
+                onClick={handleNavClick}
                 className={cn(
                   "sidebar-nav-item",
                   isActive && "sidebar-nav-item-active"
@@ -88,6 +102,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
           {isSystemAdmin && (
             <Link
               to="/roolit"
+              onClick={handleNavClick}
               className={cn(
                 "sidebar-nav-item",
                 location.pathname === "/roolit" && "sidebar-nav-item-active"
