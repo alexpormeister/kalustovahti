@@ -14,11 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          description: string | null
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           address: string | null
           billing_info: Json | null
           business_id: string | null
+          contact_email: string | null
+          contact_person: string | null
+          contact_phone: string | null
+          contract_status: string | null
           created_at: string
           id: string
           name: string
@@ -28,6 +68,10 @@ export type Database = {
           address?: string | null
           billing_info?: Json | null
           business_id?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_status?: string | null
           created_at?: string
           id?: string
           name: string
@@ -37,12 +81,66 @@ export type Database = {
           address?: string | null
           billing_info?: Json | null
           business_id?: string | null
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_status?: string | null
           created_at?: string
           id?: string
           name?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      company_contracts: {
+        Row: {
+          company_id: string
+          contract_status: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_type: string
+          id: string
+          notes: string | null
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          company_id: string
+          contract_status?: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_type?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          company_id?: string
+          contract_status?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_members: {
         Row: {
@@ -69,6 +167,60 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hardware_devices: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          description: string | null
+          device_type: string
+          id: string
+          serial_number: string
+          sim_number: string | null
+          status: string
+          updated_at: string
+          vehicle_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          device_type: string
+          id?: string
+          serial_number: string
+          sim_number?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          device_type?: string
+          id?: string
+          serial_number?: string
+          sim_number?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hardware_devices_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hardware_devices_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]

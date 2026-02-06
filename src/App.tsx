@@ -6,10 +6,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import Vehicles from "./pages/Vehicles";
+import Partners from "./pages/Partners";
+import Fleet from "./pages/Fleet";
+import Hardware from "./pages/Hardware";
 import Drivers from "./pages/Drivers";
-import Companies from "./pages/Companies";
-import Attributes from "./pages/Attributes";
+import Equipment from "./pages/Equipment";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -25,10 +26,11 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/autot" element={<Vehicles />} />
+          <Route path="/autoilijat" element={<Partners />} />
+          <Route path="/kalusto" element={<Fleet />} />
+          <Route path="/laitteet" element={<Hardware />} />
           <Route path="/kuljettajat" element={<Drivers />} />
-          <Route path="/yritykset" element={<Companies />} />
-          <Route path="/ominaisuudet" element={<Attributes />} />
+          <Route path="/varustelu" element={<Equipment />} />
           <Route path="/asetukset" element={<Settings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

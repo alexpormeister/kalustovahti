@@ -3,15 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { SearchBar } from "@/components/dashboard/SearchBar";
-import { FleetTable, Vehicle } from "@/components/dashboard/FleetTable";
 import { Button } from "@/components/ui/button";
-import { Car, Users, Building2, AlertTriangle, Plus } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Car,
+  Users,
+  Building2,
+  Smartphone,
+  FileCheck,
+  AlertTriangle,
+  TrendingUp,
+} from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,40 +41,34 @@ export default function Dashboard() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Fetch vehicles with company and driver info
-  const { data: vehiclesData = [], isLoading: vehiclesLoading } = useQuery({
-    queryKey: ["vehicles"],
+  // Fetch stats
+  const { data: vehiclesData = [] } = useQuery({
+    queryKey: ["dashboard-vehicles"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vehicles")
-        .select(`
-          *,
-          company:companies(name),
-          driver:profiles!vehicles_assigned_driver_id_fkey(full_name)
-        `)
-        .order("created_at", { ascending: false });
-
+        .select("id, status");
       if (error) throw error;
       return data || [];
     },
     enabled: !loading,
   });
 
-  // Fetch stats
-  const { data: companiesCount = 0 } = useQuery({
-    queryKey: ["companies-count"],
+  const { data: companiesData = [] } = useQuery({
+    queryKey: ["dashboard-companies"],
     queryFn: async () => {
-      const { count, error } = await supabase
+      const { data, error } = await supabase
         .from("companies")
-        .select("*", { count: "exact", head: true });
+        .select("id, name, contract_status")
+        .order("name");
       if (error) throw error;
-      return count || 0;
+      return data || [];
     },
     enabled: !loading,
   });
 
   const { data: driversCount = 0 } = useQuery({
-    queryKey: ["drivers-count"],
+    queryKey: ["dashboard-drivers-count"],
     queryFn: async () => {
       const { count, error } = await supabase
         .from("profiles")
@@ -79,31 +80,21 @@ export default function Dashboard() {
     enabled: !loading,
   });
 
-  // Transform data to Vehicle format
-  const vehicles: Vehicle[] = vehiclesData.map((v: any) => ({
-    id: v.id,
-    registrationNumber: v.registration_number,
-    vehicleNumber: v.vehicle_number,
-    brand: v.brand,
-    model: v.model,
-    company: v.company?.name || "—",
-    driver: v.driver?.full_name || undefined,
-    status: v.status as "active" | "maintenance" | "removed",
-  }));
-
-  const filteredVehicles = vehicles.filter((vehicle) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      vehicle.registrationNumber.toLowerCase().includes(query) ||
-      vehicle.vehicleNumber.toLowerCase().includes(query) ||
-      vehicle.driver?.toLowerCase().includes(query) ||
-      vehicle.brand.toLowerCase().includes(query) ||
-      vehicle.model.toLowerCase().includes(query)
-    );
+  const { data: hardwareCount = 0 } = useQuery({
+    queryKey: ["dashboard-hardware-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("hardware_devices")
+        .select("*", { count: "exact", head: true });
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !loading,
   });
 
-  const activeCount = vehicles.filter((v) => v.status === "active").length;
-  const maintenanceCount = vehicles.filter((v) => v.status === "maintenance").length;
+  const activeVehicles = vehiclesData.filter((v) => v.status === "active").length;
+  const maintenanceVehicles = vehiclesData.filter((v) => v.status === "maintenance").length;
+  const activeContracts = companiesData.filter((c) => c.contract_status === "active").length;
 
   if (loading) {
     return (
@@ -119,80 +110,199 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Hallintapaneeli</h1>
+            <h1 className="text-3xl font-bold text-foreground">
+              Hallintapaneeli
+            </h1>
             <p className="text-muted-foreground mt-1">
-              Tervetuloa takaisin! Tässä on yhteenveto kalustostasi.
+              Tervetuloa Lähitaksi-kumppaninhallintaan
             </p>
           </div>
-          <Button className="gap-2" onClick={() => navigate("/autot")}>
-            <Plus className="h-4 w-4" />
-            Lisää ajoneuvo
-          </Button>
         </div>
 
         {/* Stats Grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            title="Ajoneuvoja yhteensä"
-            value={vehicles.length}
+            title="Aktiiviset sopimukset"
+            value={activeContracts}
+            icon={<FileCheck className="h-6 w-6 text-primary" />}
+            description={`${companiesData.length} yritystä yhteensä`}
+          />
+          <StatCard
+            title="Ajoneuvoja"
+            value={vehiclesData.length}
             icon={<Car className="h-6 w-6 text-primary" />}
-            description="Kaikki rekisteröidyt"
+            description={`${activeVehicles} aktiivista`}
           />
           <StatCard
-            title="Aktiiviset"
-            value={activeCount}
-            icon={<Car className="h-6 w-6 text-status-active" />}
+            title="Kuljettajia"
+            value={driversCount}
+            icon={<Users className="h-6 w-6 text-primary" />}
           />
           <StatCard
-            title="Huollossa"
-            value={maintenanceCount}
-            icon={<AlertTriangle className="h-6 w-6 text-status-maintenance" />}
-          />
-          <StatCard
-            title="Yrityksiä"
-            value={companiesCount}
-            icon={<Building2 className="h-6 w-6 text-primary" />}
+            title="Laitteita"
+            value={hardwareCount}
+            icon={<Smartphone className="h-6 w-6 text-primary" />}
+            description="Maksupäätteet, SIM-kortit"
           />
         </div>
 
-        {/* Search and Table */}
-        <div className="space-y-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} />
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                Suodata
+        {/* Quick Stats Row */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Active Companies */}
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-primary" />
+                Viimeisimmät kumppanit
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {companiesData.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Ei yrityksiä</p>
+              ) : (
+                <div className="space-y-2">
+                  {companiesData.slice(0, 5).map((company) => (
+                    <div
+                      key={company.id}
+                      className="flex items-center justify-between py-1"
+                    >
+                      <span className="text-sm font-medium">{company.name}</span>
+                      <Badge
+                        variant={
+                          company.contract_status === "active"
+                            ? "default"
+                            : "secondary"
+                        }
+                        className={
+                          company.contract_status === "active"
+                            ? "bg-status-active text-status-active-foreground"
+                            : ""
+                        }
+                      >
+                        {company.contract_status === "active"
+                          ? "Aktiivinen"
+                          : company.contract_status === "pending"
+                          ? "Odottaa"
+                          : company.contract_status || "—"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button
+                variant="ghost"
+                className="w-full mt-4"
+                onClick={() => navigate("/autoilijat")}
+              >
+                Näytä kaikki
               </Button>
-              <Button variant="outline" size="sm">
-                Vie tiedot
-              </Button>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {vehiclesLoading ? (
-            <div className="glass-card rounded-xl p-12 text-center">
-              <div className="animate-pulse text-muted-foreground">Ladataan ajoneuvoja...</div>
-            </div>
-          ) : vehicles.length === 0 ? (
-            <div className="glass-card rounded-xl p-12 text-center">
-              <Car className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Ei ajoneuvoja</h3>
-              <p className="text-muted-foreground mb-4">
-                Aloita lisäämällä ensimmäinen ajoneuvo kalustoon.
-              </p>
-              <Button onClick={() => navigate("/autot")}>
-                <Plus className="h-4 w-4 mr-2" />
+          {/* Vehicle Status */}
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Car className="h-5 w-5 text-primary" />
+                Kaluston tila
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Aktiiviset</span>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-status-active rounded-full"
+                        style={{
+                          width: `${
+                            vehiclesData.length > 0
+                              ? (activeVehicles / vehiclesData.length) * 100
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium w-8 text-right">
+                      {activeVehicles}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Huollossa</span>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-status-maintenance rounded-full"
+                        style={{
+                          width: `${
+                            vehiclesData.length > 0
+                              ? (maintenanceVehicles / vehiclesData.length) * 100
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium w-8 text-right">
+                      {maintenanceVehicles}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                className="w-full mt-4"
+                onClick={() => navigate("/kalusto")}
+              >
+                Kalustolista
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card className="glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Pikatoiminnot
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => navigate("/autoilijat")}
+              >
+                <Building2 className="h-4 w-4 mr-2" />
+                Lisää autoilija
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => navigate("/kalusto")}
+              >
+                <Car className="h-4 w-4 mr-2" />
                 Lisää ajoneuvo
               </Button>
-            </div>
-          ) : (
-            <FleetTable
-              vehicles={filteredVehicles}
-              onView={(vehicle) => console.log("View:", vehicle)}
-              onEdit={(vehicle) => console.log("Edit:", vehicle)}
-              onDelete={(vehicle) => console.log("Delete:", vehicle)}
-            />
-          )}
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => navigate("/laitteet")}
+              >
+                <Smartphone className="h-4 w-4 mr-2" />
+                Lisää laite
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => navigate("/varustelu")}
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Hallitse varustelua
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </DashboardLayout>
