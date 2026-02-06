@@ -31,6 +31,8 @@ import {
 import { Building2, Plus, Search, FileText, History } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 
 type ContractStatus = 'active' | 'expired' | 'pending' | 'terminated';
 
@@ -180,6 +182,16 @@ export default function Partners() {
       company.business_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       company.contact_person?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedData: paginatedCompanies,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination(filteredCompanies);
 
   return (
     <DashboardLayout>
@@ -332,53 +344,63 @@ export default function Partners() {
               <div className="text-center py-8 text-muted-foreground">
                 Ladataan...
               </div>
-            ) : filteredCompanies.length === 0 ? (
+            ) : paginatedCompanies.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 Ei autoilijoita
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Yritys</TableHead>
-                    <TableHead>Y-tunnus</TableHead>
-                    <TableHead>Yhteyshenkilö</TableHead>
-                    <TableHead>Puhelin</TableHead>
-                    <TableHead>Sopimus</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCompanies.map((company) => (
-                    <TableRow key={company.id}>
-                      <TableCell className="font-medium">{company.name}</TableCell>
-                      <TableCell>{company.business_id || "—"}</TableCell>
-                      <TableCell>{company.contact_person || "—"}</TableCell>
-                      <TableCell>{company.contact_phone || "—"}</TableCell>
-                      <TableCell>
-                        {company.contract_status && (
-                          <Badge
-                            className={contractStatusColors[company.contract_status]}
-                          >
-                            {contractStatusLabels[company.contract_status]}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(company)}
-                          >
-                            Muokkaa
-                          </Button>
-                        </div>
-                      </TableCell>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Yritys</TableHead>
+                      <TableHead>Y-tunnus</TableHead>
+                      <TableHead>Yhteyshenkilö</TableHead>
+                      <TableHead>Puhelin</TableHead>
+                      <TableHead>Sopimus</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedCompanies.map((company) => (
+                      <TableRow key={company.id}>
+                        <TableCell className="font-medium">{company.name}</TableCell>
+                        <TableCell>{company.business_id || "—"}</TableCell>
+                        <TableCell>{company.contact_person || "—"}</TableCell>
+                        <TableCell>{company.contact_phone || "—"}</TableCell>
+                        <TableCell>
+                          {company.contract_status && (
+                            <Badge
+                              className={contractStatusColors[company.contract_status]}
+                            >
+                              {contractStatusLabels[company.contract_status]}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(company)}
+                            >
+                              Muokkaa
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  totalItems={totalItems}
+                />
+              </>
             )}
           </CardContent>
         </Card>

@@ -24,7 +24,7 @@ export interface Vehicle {
   model: string;
   company: string;
   driver?: string;
-  status: "active" | "maintenance" | "removed";
+  status: "active" | "removed";
   attributes?: string[];
 }
 

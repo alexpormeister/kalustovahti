@@ -39,6 +39,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 
 type DeviceType = "payment_terminal" | "sim_card" | "tablet" | "other";
 type DeviceStatus = "available" | "installed" | "maintenance" | "decommissioned";
@@ -249,6 +251,16 @@ export default function Hardware() {
           .includes(searchQuery.toLowerCase()) ||
         device.company?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedData: paginatedDevices,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination(filteredDevices);
 
   const deviceCounts = {
     payment_terminal: devices.filter(
@@ -495,57 +507,67 @@ export default function Hardware() {
               <div className="text-center py-8 text-muted-foreground">
                 Ladataan...
               </div>
-            ) : filteredDevices.length === 0 ? (
+            ) : paginatedDevices.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 Ei laitteita
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Sarjanumero</TableHead>
-                    {activeTab !== "payment_terminal" && (
-                      <TableHead>SIM-numero</TableHead>
-                    )}
-                    <TableHead>Auto</TableHead>
-                    <TableHead>Yritys</TableHead>
-                    <TableHead>Tila</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredDevices.map((device) => (
-                    <TableRow key={device.id}>
-                      <TableCell className="font-mono font-medium">
-                        {device.serial_number}
-                      </TableCell>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Sarjanumero</TableHead>
                       {activeTab !== "payment_terminal" && (
-                        <TableCell>{device.sim_number || "—"}</TableCell>
+                        <TableHead>SIM-numero</TableHead>
                       )}
-                      <TableCell>
-                        {device.vehicle
-                          ? `${device.vehicle.vehicle_number} (${device.vehicle.registration_number})`
-                          : "—"}
-                      </TableCell>
-                      <TableCell>{device.company?.name || "—"}</TableCell>
-                      <TableCell>
-                        <Badge className={statusColors[device.status]}>
-                          {statusLabels[device.status]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEdit(device)}
-                        >
-                          Muokkaa
-                        </Button>
-                      </TableCell>
+                      <TableHead>Auto</TableHead>
+                      <TableHead>Yritys</TableHead>
+                      <TableHead>Tila</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedDevices.map((device) => (
+                      <TableRow key={device.id}>
+                        <TableCell className="font-mono font-medium">
+                          {device.serial_number}
+                        </TableCell>
+                        {activeTab !== "payment_terminal" && (
+                          <TableCell>{device.sim_number || "—"}</TableCell>
+                        )}
+                        <TableCell>
+                          {device.vehicle
+                            ? `${device.vehicle.vehicle_number} (${device.vehicle.registration_number})`
+                            : "—"}
+                        </TableCell>
+                        <TableCell>{device.company?.name || "—"}</TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[device.status]}>
+                            {statusLabels[device.status]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(device)}
+                          >
+                            Muokkaa
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  totalItems={totalItems}
+                />
+              </>
             )}
           </CardContent>
         </Card>

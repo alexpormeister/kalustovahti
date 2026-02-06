@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type Status = "active" | "maintenance" | "removed";
+type Status = "active" | "removed";
 
 interface StatusBadgeProps {
   status: Status;
@@ -9,7 +9,6 @@ interface StatusBadgeProps {
 
 const statusLabels: Record<Status, string> = {
   active: "Aktiivinen",
-  maintenance: "Huollossa",
   removed: "Poistettu",
 };
 
@@ -20,7 +19,6 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         "status-badge",
         {
           "status-active": status === "active",
-          "status-maintenance": status === "maintenance",
           "status-removed": status === "removed",
         },
         className
