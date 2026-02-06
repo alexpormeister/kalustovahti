@@ -169,7 +169,7 @@ export default function QualityControl() {
 
           if (incident.driver_id) {
             const { data: driverData } = await supabase
-              .from("profiles")
+              .from("drivers")
               .select("full_name, driver_number")
               .eq("id", incident.driver_id)
               .single();
@@ -221,13 +221,13 @@ export default function QualityControl() {
   });
 
   // Fetch drivers for dropdown
-  const { data: drivers = [] } = useQuery({
+  const { data: driversData = [] } = useQuery({
     queryKey: ["drivers-list"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
+        .from("drivers")
         .select("id, full_name, driver_number")
-        .not("driver_number", "is", null)
+        .eq("status", "active")
         .order("full_name");
       if (error) throw error;
       return data;
@@ -475,7 +475,7 @@ export default function QualityControl() {
                 className="w-full justify-between"
               >
                 {formData.driver_id
-                  ? drivers.find((d) => d.id === formData.driver_id)?.full_name
+                  ? driversData.find((d) => d.id === formData.driver_id)?.full_name
                   : "Valitse kuljettaja..."}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
@@ -501,7 +501,7 @@ export default function QualityControl() {
                       />
                       Ei kuljettajaa
                     </CommandItem>
-                    {drivers.map((driver) => (
+                    {driversData.map((driver) => (
                       <CommandItem
                         key={driver.id}
                         value={`${driver.full_name} ${driver.driver_number}`}

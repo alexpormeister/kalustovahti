@@ -98,7 +98,7 @@ export function QualityHistoryTab({ vehicleId, driverId }: QualityHistoryTabProp
 
           if (incident.driver_id) {
             const { data: driverData } = await supabase
-              .from("profiles")
+              .from("drivers")
               .select("full_name, driver_number")
               .eq("id", incident.driver_id)
               .single();
