@@ -338,16 +338,16 @@ export default function Hardware() {
         <div>
           <Label htmlFor="vehicle_id">Liitetty autoon</Label>
           <Select
-            value={formData.vehicle_id}
+            value={formData.vehicle_id || "none"}
             onValueChange={(value) =>
-              setFormData({ ...formData, vehicle_id: value })
+              setFormData({ ...formData, vehicle_id: value === "none" ? "" : value })
             }
           >
             <SelectTrigger>
               <SelectValue placeholder="Valitse auto" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Ei liitetty</SelectItem>
+              <SelectItem value="none">Ei liitetty</SelectItem>
               {vehicles.map((vehicle) => (
                 <SelectItem key={vehicle.id} value={vehicle.id}>
                   {vehicle.vehicle_number} - {vehicle.registration_number}
@@ -359,16 +359,16 @@ export default function Hardware() {
         <div>
           <Label htmlFor="company_id">Yritys</Label>
           <Select
-            value={formData.company_id}
+            value={formData.company_id || "none"}
             onValueChange={(value) =>
-              setFormData({ ...formData, company_id: value })
+              setFormData({ ...formData, company_id: value === "none" ? "" : value })
             }
           >
             <SelectTrigger>
               <SelectValue placeholder="Valitse yritys" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Ei määritetty</SelectItem>
+              <SelectItem value="none">Ei määritetty</SelectItem>
               {companies.map((company) => (
                 <SelectItem key={company.id} value={company.id}>
                   {company.name}
