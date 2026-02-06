@@ -2,6 +2,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Users, Search } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Pencil, Users, Search, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,23 +42,41 @@ import {
 } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+
+interface Driver {
+  id: string;
+  driver_number: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  driver_license_valid_until: string | null;
+  notes: string | null;
+  status: string;
+  company_id: string | null;
+  company?: { name: string } | null;
+}
 
 interface DriverForm {
   full_name: string;
   phone: string;
+  email: string;
   driver_number: string;
   driver_license_valid_until: Date | undefined;
-  email: string;
-  password: string;
+  notes: string;
+  status: string;
+  company_id: string;
 }
 
 const defaultForm: DriverForm = {
   full_name: "",
   phone: "",
+  email: "",
   driver_number: "",
   driver_license_valid_until: undefined,
-  email: "",
-  password: "",
+  notes: "",
+  status: "active",
+  company_id: "",
 };
 
 export default function Drivers() {
@@ -69,65 +95,66 @@ export default function Drivers() {
     });
   }, [navigate]);
 
-  // Fetch drivers (profiles with driver_number)
+  // Fetch drivers from drivers table
   const { data: drivers = [], isLoading } = useQuery({
     queryKey: ["drivers"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .not("driver_number", "is", null)
+        .from("drivers")
+        .select(`
+          *,
+          company:companies(name)
+        `)
         .order("full_name");
 
       if (error) throw error;
-      return data || [];
+      return data as Driver[];
+    },
+  });
+
+  // Fetch companies for dropdown
+  const { data: companies = [] } = useQuery({
+    queryKey: ["companies-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("companies")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data;
     },
   });
 
   // Create driver mutation
   const createMutation = useMutation({
     mutationFn: async (formData: DriverForm) => {
-      // Create user via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.full_name,
-          },
-        },
-      });
-      
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Kuljettajan luonti epäonnistui");
-
-      // Update the profile with driver info
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
+      const { error } = await supabase
+        .from("drivers")
+        .insert([{
           full_name: formData.full_name,
           phone: formData.phone || null,
+          email: formData.email || null,
           driver_number: formData.driver_number,
           driver_license_valid_until: formData.driver_license_valid_until
             ? format(formData.driver_license_valid_until, "yyyy-MM-dd")
             : null,
-        })
-        .eq("id", authData.user.id);
-
-      if (profileError) throw profileError;
-
-      return authData.user;
+          notes: formData.notes || null,
+          status: formData.status,
+          company_id: formData.company_id || null,
+        }]);
+      
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["drivers"] });
-      toast.success("Kuljettaja luotu onnistuneesti! Kuljettaja saa sähköpostin tunnuksistaan.");
+      toast.success("Kuljettaja lisätty onnistuneesti");
       setDialogOpen(false);
       resetForm();
     },
     onError: (error: any) => {
       console.error("Create driver error:", error);
-      if (error.message?.includes("already registered")) {
-        toast.error("Tämä sähköpostiosoite on jo käytössä");
+      if (error.message?.includes("duplicate")) {
+        toast.error("Kuljettajanumero on jo käytössä");
       } else {
         toast.error("Virhe: " + error.message);
       }
@@ -140,14 +167,18 @@ export default function Drivers() {
       if (!editingId) return;
 
       const { error } = await supabase
-        .from("profiles")
+        .from("drivers")
         .update({
           full_name: formData.full_name,
           phone: formData.phone || null,
+          email: formData.email || null,
           driver_number: formData.driver_number,
           driver_license_valid_until: formData.driver_license_valid_until
             ? format(formData.driver_license_valid_until, "yyyy-MM-dd")
             : null,
+          notes: formData.notes || null,
+          status: formData.status,
+          company_id: formData.company_id || null,
         })
         .eq("id", editingId);
 
@@ -164,21 +195,42 @@ export default function Drivers() {
     },
   });
 
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("drivers")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["drivers"] });
+      toast.success("Kuljettaja poistettu");
+    },
+    onError: (error: any) => {
+      toast.error("Virhe: " + error.message);
+    },
+  });
+
   const resetForm = () => {
     setForm(defaultForm);
     setEditingId(null);
   };
 
-  const handleEdit = (driver: any) => {
+  const handleEdit = (driver: Driver) => {
     setForm({
       full_name: driver.full_name || "",
       phone: driver.phone || "",
+      email: driver.email || "",
       driver_number: driver.driver_number || "",
       driver_license_valid_until: driver.driver_license_valid_until
         ? new Date(driver.driver_license_valid_until)
         : undefined,
-      email: "",
-      password: "",
+      notes: driver.notes || "",
+      status: driver.status || "active",
+      company_id: driver.company_id || "",
     });
     setEditingId(driver.id);
     setDialogOpen(true);
@@ -191,25 +243,22 @@ export default function Drivers() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.full_name || !form.driver_number) {
+      toast.error("Nimi ja kuljettajanumero ovat pakollisia");
+      return;
+    }
     if (editingId) {
       updateMutation.mutate(form);
     } else {
-      if (!form.email || !form.password) {
-        toast.error("Sähköposti ja salasana ovat pakollisia uudelle kuljettajalle");
-        return;
-      }
-      if (form.password.length < 6) {
-        toast.error("Salasanan tulee olla vähintään 6 merkkiä");
-        return;
-      }
       createMutation.mutate(form);
     }
   };
 
-  const filteredDrivers = drivers.filter((d: any) =>
+  const filteredDrivers = drivers.filter((d) =>
     d.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     d.driver_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.phone?.toLowerCase().includes(searchQuery.toLowerCase())
+    d.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    d.company?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const isLicenseExpiringSoon = (date: string | null) => {
@@ -250,55 +299,29 @@ export default function Drivers() {
                 Lisää kuljettaja
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>
                   {isCreating ? "Lisää uusi kuljettaja" : "Muokkaa kuljettajaa"}
                 </DialogTitle>
                 <DialogDescription>
                   {isCreating 
-                    ? "Syötä uuden kuljettajan tiedot. Kuljettaja saa sähköpostin kirjautumistunnuksistaan." 
+                    ? "Syötä uuden kuljettajan tiedot." 
                     : "Päivitä kuljettajan tiedot."}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                {isCreating && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Sähköposti *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
-                        placeholder="kuljettaja@esimerkki.fi"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Salasana *</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={form.password}
-                        onChange={(e) => setForm({ ...form, password: e.target.value })}
-                        placeholder="Vähintään 6 merkkiä"
-                        required
-                      />
-                    </div>
-                  </>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="full_name">Nimi *</Label>
-                  <Input
-                    id="full_name"
-                    value={form.full_name}
-                    onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                    placeholder="Matti Meikäläinen"
-                    required
-                  />
-                </div>
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="full_name">Nimi *</Label>
+                    <Input
+                      id="full_name"
+                      value={form.full_name}
+                      onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                      placeholder="Matti Meikäläinen"
+                      required
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="driver_number">Kuljettajanumero *</Label>
                     <Input
@@ -309,6 +332,8 @@ export default function Drivers() {
                       required
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="phone">Puhelin</Label>
                     <Input
@@ -318,42 +343,99 @@ export default function Drivers() {
                       placeholder="+358 40 123 4567"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Sähköposti</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      placeholder="matti@esimerkki.fi"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Ammattiajon voimassaolo</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !form.driver_license_valid_until && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {form.driver_license_valid_until ? (
+                            format(form.driver_license_valid_until, "d.M.yyyy", { locale: fi })
+                          ) : (
+                            "Valitse päivämäärä"
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={form.driver_license_valid_until}
+                          onSelect={(date) => setForm({ ...form, driver_license_valid_until: date })}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tila</Label>
+                    <Select
+                      value={form.status}
+                      onValueChange={(value) => setForm({ ...form, status: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Aktiivinen</SelectItem>
+                        <SelectItem value="inactive">Ei-aktiivinen</SelectItem>
+                        <SelectItem value="suspended">Estetty</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Ammattiajon voimassaolo</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !form.driver_license_valid_until && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {form.driver_license_valid_until ? (
-                          format(form.driver_license_valid_until, "d.M.yyyy", { locale: fi })
-                        ) : (
-                          "Valitse päivämäärä"
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={form.driver_license_valid_until}
-                        onSelect={(date) => setForm({ ...form, driver_license_valid_until: date })}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <Label>Yritys</Label>
+                  <Select
+                    value={form.company_id}
+                    onValueChange={(value) => setForm({ ...form, company_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Valitse yritys" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Ei yritystä</SelectItem>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Muistiinpanot</Label>
+                  <Textarea
+                    id="notes"
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    placeholder="Lisätietoja kuljettajasta..."
+                    rows={2}
+                  />
                 </div>
                 <div className="flex justify-end gap-2 pt-4">
                   <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                     Peruuta
                   </Button>
                   <Button type="submit" disabled={isPending}>
-                    {isPending ? "Tallennetaan..." : isCreating ? "Luo kuljettaja" : "Tallenna"}
+                    {isPending ? "Tallennetaan..." : isCreating ? "Lisää kuljettaja" : "Tallenna"}
                   </Button>
                 </div>
               </form>
@@ -365,7 +447,7 @@ export default function Drivers() {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Hae nimellä tai kuljettajanumerolla..."
+            placeholder="Hae nimellä, numerolla tai yrityksellä..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -378,31 +460,34 @@ export default function Drivers() {
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="font-semibold text-foreground">Nimi</TableHead>
-                <TableHead className="font-semibold text-foreground">Kuljettajanumero</TableHead>
+                <TableHead className="font-semibold text-foreground">Numero</TableHead>
+                <TableHead className="font-semibold text-foreground">Yritys</TableHead>
                 <TableHead className="font-semibold text-foreground">Puhelin</TableHead>
-                <TableHead className="font-semibold text-foreground">Ammattiajon voimassaolo</TableHead>
+                <TableHead className="font-semibold text-foreground">Ajokortti</TableHead>
+                <TableHead className="font-semibold text-foreground">Tila</TableHead>
                 <TableHead className="w-[100px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                     Ladataan...
                   </TableCell>
                 </TableRow>
               ) : filteredDrivers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                     <p className="text-muted-foreground">Ei kuljettajia löytynyt</p>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredDrivers.map((driver: any) => (
+                filteredDrivers.map((driver) => (
                   <TableRow key={driver.id} className="border-border hover:bg-muted/50">
-                    <TableCell className="font-medium">{driver.full_name || "—"}</TableCell>
+                    <TableCell className="font-medium">{driver.full_name}</TableCell>
                     <TableCell>{driver.driver_number}</TableCell>
+                    <TableCell>{driver.company?.name || "—"}</TableCell>
                     <TableCell>{driver.phone || "—"}</TableCell>
                     <TableCell>
                       {driver.driver_license_valid_until ? (
@@ -423,6 +508,18 @@ export default function Drivers() {
                       )}
                     </TableCell>
                     <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          driver.status === "active" && "bg-status-active/20 text-status-active border-status-active/30",
+                          driver.status === "inactive" && "bg-muted text-muted-foreground",
+                          driver.status === "suspended" && "bg-destructive/20 text-destructive border-destructive/30"
+                        )}
+                      >
+                        {driver.status === "active" ? "Aktiivinen" : driver.status === "inactive" ? "Ei-aktiivinen" : "Estetty"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
@@ -431,6 +528,18 @@ export default function Drivers() {
                           onClick={() => handleEdit(driver)}
                         >
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (confirm("Haluatko varmasti poistaa tämän kuljettajan?")) {
+                              deleteMutation.mutate(driver.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
