@@ -43,6 +43,8 @@ import {
 import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 
 interface Driver {
   id: string;
@@ -261,6 +263,16 @@ export default function Drivers() {
     d.company?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedData: paginatedDrivers,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination(filteredDrivers);
+
   const isLicenseExpiringSoon = (date: string | null) => {
     if (!date) return false;
     const expiryDate = new Date(date);
@@ -475,7 +487,7 @@ export default function Drivers() {
                     Ladataan...
                   </TableCell>
                 </TableRow>
-              ) : filteredDrivers.length === 0 ? (
+              ) : paginatedDrivers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
                     <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
@@ -483,7 +495,7 @@ export default function Drivers() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredDrivers.map((driver) => (
+                paginatedDrivers.map((driver) => (
                   <TableRow key={driver.id} className="border-border hover:bg-muted/50">
                     <TableCell className="font-medium">{driver.full_name}</TableCell>
                     <TableCell>{driver.driver_number}</TableCell>
@@ -548,6 +560,14 @@ export default function Drivers() {
               )}
             </TableBody>
           </Table>
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            startIndex={startIndex}
+            endIndex={endIndex}
+            totalItems={totalItems}
+          />
         </div>
       </div>
     </DashboardLayout>

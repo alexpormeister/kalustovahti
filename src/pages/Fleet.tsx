@@ -33,8 +33,10 @@ import { toast } from "sonner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 
-type VehicleStatus = "active" | "maintenance" | "removed";
+type VehicleStatus = "active" | "removed";
 
 interface Vehicle {
   id: string;
@@ -86,7 +88,7 @@ export default function Fleet() {
         .select(`
           *,
           company:companies(name),
-          driver:profiles!vehicles_assigned_driver_id_fkey(full_name)
+          driver:drivers!vehicles_assigned_driver_id_fkey(full_name)
         `)
         .order("vehicle_number");
       if (error) throw error;
@@ -289,6 +291,16 @@ export default function Fleet() {
     return matchesSearch && matchesStatus && matchesAttributes;
   });
 
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    paginatedData: paginatedVehicles,
+    startIndex,
+    endIndex,
+    totalItems,
+  } = usePagination(filteredVehicles);
+
   const VehicleForm = () => (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -380,7 +392,6 @@ export default function Fleet() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="active">Aktiivinen</SelectItem>
-              <SelectItem value="maintenance">Huollossa</SelectItem>
               <SelectItem value="removed">Poistettu</SelectItem>
             </SelectContent>
           </Select>
@@ -508,7 +519,6 @@ export default function Fleet() {
             <SelectContent>
               <SelectItem value="all">Kaikki tilat</SelectItem>
               <SelectItem value="active">Aktiiviset</SelectItem>
-              <SelectItem value="maintenance">Huollossa</SelectItem>
               <SelectItem value="removed">Poistetut</SelectItem>
             </SelectContent>
           </Select>
@@ -569,72 +579,82 @@ export default function Fleet() {
               <div className="text-center py-8 text-muted-foreground">
                 Ladataan...
               </div>
-            ) : filteredVehicles.length === 0 ? (
+            ) : paginatedVehicles.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 Ei ajoneuvoja
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nro</TableHead>
-                      <TableHead>Rekisteri</TableHead>
-                      <TableHead>Merkki/Malli</TableHead>
-                      <TableHead>Yritys</TableHead>
-                      <TableHead>Varustelu</TableHead>
-                      <TableHead>Tila</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredVehicles.map((vehicle) => (
-                      <TableRow key={vehicle.id}>
-                        <TableCell className="font-mono font-medium">
-                          {vehicle.vehicle_number}
-                        </TableCell>
-                        <TableCell className="font-mono">
-                          {vehicle.registration_number}
-                        </TableCell>
-                        <TableCell>
-                          {vehicle.brand} {vehicle.model}
-                        </TableCell>
-                        <TableCell>{vehicle.company?.name || "—"}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {vehicle.attributes?.slice(0, 3).map((attr) => (
-                              <Badge
-                                key={attr.id}
-                                variant="secondary"
-                                className="text-xs"
-                              >
-                                {attr.name}
-                              </Badge>
-                            ))}
-                            {(vehicle.attributes?.length || 0) > 3 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{(vehicle.attributes?.length || 0) - 3}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={vehicle.status} />
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(vehicle)}
-                          >
-                            Muokkaa
-                          </Button>
-                        </TableCell>
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nro</TableHead>
+                        <TableHead>Rekisteri</TableHead>
+                        <TableHead>Merkki/Malli</TableHead>
+                        <TableHead>Yritys</TableHead>
+                        <TableHead>Varustelu</TableHead>
+                        <TableHead>Tila</TableHead>
+                        <TableHead></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedVehicles.map((vehicle) => (
+                        <TableRow key={vehicle.id}>
+                          <TableCell className="font-mono font-medium">
+                            {vehicle.vehicle_number}
+                          </TableCell>
+                          <TableCell className="font-mono">
+                            {vehicle.registration_number}
+                          </TableCell>
+                          <TableCell>
+                            {vehicle.brand} {vehicle.model}
+                          </TableCell>
+                          <TableCell>{vehicle.company?.name || "—"}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {vehicle.attributes?.slice(0, 3).map((attr) => (
+                                <Badge
+                                  key={attr.id}
+                                  variant="secondary"
+                                  className="text-xs"
+                                >
+                                  {attr.name}
+                                </Badge>
+                              ))}
+                              {(vehicle.attributes?.length || 0) > 3 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{(vehicle.attributes?.length || 0) - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={vehicle.status} />
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(vehicle)}
+                            >
+                              Muokkaa
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  totalItems={totalItems}
+                />
+              </>
             )}
           </CardContent>
         </Card>

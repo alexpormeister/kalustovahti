@@ -72,9 +72,9 @@ export default function Dashboard() {
     queryKey: ["dashboard-drivers-count"],
     queryFn: async () => {
       const { count, error } = await supabase
-        .from("profiles")
+        .from("drivers")
         .select("*", { count: "exact", head: true })
-        .not("driver_number", "is", null);
+        .eq("status", "active");
       if (error) throw error;
       return count || 0;
     },
@@ -94,7 +94,6 @@ export default function Dashboard() {
   });
 
   const activeVehicles = vehiclesData.filter((v) => v.status === "active").length;
-  const maintenanceVehicles = vehiclesData.filter((v) => v.status === "maintenance").length;
   const activeContracts = companiesData.filter((c) => c.contract_status === "active").length;
 
   if (loading) {
@@ -228,26 +227,6 @@ export default function Dashboard() {
                       </div>
                       <span className="text-sm font-medium w-8 text-right">
                         {activeVehicles}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Huollossa</span>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-status-maintenance rounded-full"
-                          style={{
-                            width: `${
-                              vehiclesData.length > 0
-                                ? (maintenanceVehicles / vehiclesData.length) * 100
-                                : 0
-                            }%`,
-                          }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium w-8 text-right">
-                        {maintenanceVehicles}
                       </span>
                     </div>
                   </div>
