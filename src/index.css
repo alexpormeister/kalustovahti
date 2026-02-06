@@ -11,7 +11,8 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
+    /* Lähitaksi Yellow Brand - #FFDC29 = 51 100% 58% */
+    --background: 48 30% 97%;
     --foreground: 220 20% 10%;
 
     --card: 0 0% 100%;
@@ -20,24 +21,26 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 10%;
 
-    --primary: 220 70% 45%;
-    --primary-foreground: 0 0% 100%;
+    /* Lähitaksi Yellow as primary */
+    --primary: 51 100% 58%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 210 15% 93%;
+    --secondary: 48 20% 92%;
     --secondary-foreground: 220 20% 25%;
 
-    --muted: 210 15% 95%;
+    --muted: 48 15% 94%;
     --muted-foreground: 220 10% 45%;
 
-    --accent: 220 70% 50%;
-    --accent-foreground: 0 0% 100%;
+    /* Lähitaksi Yellow as accent */
+    --accent: 51 100% 58%;
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 220 70% 45%;
+    --border: 48 20% 85%;
+    --input: 48 20% 85%;
+    --ring: 51 100% 58%;
 
     --radius: 0.5rem;
 
@@ -49,61 +52,63 @@
     --status-removed: 0 72% 51%;
     --status-removed-foreground: 0 0% 100%;
 
-    /* Sidebar - Dark Professional */
+    /* Sidebar - Dark with Lähitaksi Yellow accents */
     --sidebar-background: 220 25% 12%;
-    --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 220 70% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-foreground: 48 30% 90%;
+    --sidebar-primary: 51 100% 58%;
+    --sidebar-primary-foreground: 0 0% 0%;
     --sidebar-accent: 220 25% 18%;
-    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-accent-foreground: 48 30% 95%;
     --sidebar-border: 220 20% 20%;
-    --sidebar-ring: 220 70% 55%;
+    --sidebar-ring: 51 100% 58%;
 
     /* Chart colors */
-    --chart-1: 220 70% 50%;
+    --chart-1: 51 100% 58%;
     --chart-2: 142 76% 36%;
-    --chart-3: 45 93% 47%;
+    --chart-3: 200 80% 50%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
 
   .dark {
     --background: 220 25% 8%;
-    --foreground: 210 20% 95%;
+    --foreground: 48 30% 95%;
 
     --card: 220 25% 12%;
-    --card-foreground: 210 20% 95%;
+    --card-foreground: 48 30% 95%;
 
     --popover: 220 25% 12%;
-    --popover-foreground: 210 20% 95%;
+    --popover-foreground: 48 30% 95%;
 
-    --primary: 220 70% 55%;
-    --primary-foreground: 0 0% 100%;
+    /* Lähitaksi Yellow as primary */
+    --primary: 51 100% 58%;
+    --primary-foreground: 0 0% 0%;
 
     --secondary: 220 20% 20%;
-    --secondary-foreground: 210 20% 85%;
+    --secondary-foreground: 48 20% 85%;
 
     --muted: 220 20% 18%;
-    --muted-foreground: 210 15% 60%;
+    --muted-foreground: 48 15% 60%;
 
-    --accent: 220 70% 55%;
-    --accent-foreground: 0 0% 100%;
+    /* Lähitaksi Yellow as accent */
+    --accent: 51 100% 58%;
+    --accent-foreground: 0 0% 0%;
 
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 220 20% 22%;
     --input: 220 20% 22%;
-    --ring: 220 70% 55%;
+    --ring: 51 100% 58%;
 
     --sidebar-background: 220 30% 6%;
-    --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 220 70% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-foreground: 48 30% 90%;
+    --sidebar-primary: 51 100% 58%;
+    --sidebar-primary-foreground: 0 0% 0%;
     --sidebar-accent: 220 25% 12%;
-    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-accent-foreground: 48 30% 95%;
     --sidebar-border: 220 25% 15%;
-    --sidebar-ring: 220 70% 55%;
+    --sidebar-ring: 51 100% 58%;
   }
 }
 
