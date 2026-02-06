@@ -1,8 +1,12 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings as SettingsIcon, User, Shield, Bell } from "lucide-react";
+import { Settings as SettingsIcon, User, Shield, Bell, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 export default function Settings() {
+  const navigate = useNavigate();
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -56,6 +60,28 @@ export default function Settings() {
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Tag className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Varustelu</CardTitle>
+                  <CardDescription>Dynaamisten attribuuttien hallinta</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Hallitse ajoneuvojen varustelutietoja, kuten inva-hissi, paarivarustus, porraskiipijä.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => navigate("/varustelu")}>
+                Siirry varusteluun
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                   <Bell className="h-5 w-5 text-primary" />
                 </div>
                 <div>
@@ -71,7 +97,7 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
+          <Card className="glass-card md:col-span-2">
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
