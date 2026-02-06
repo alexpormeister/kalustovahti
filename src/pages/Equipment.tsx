@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,7 +33,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Tag, Plus, Trash2, Edit2 } from "lucide-react";
+import { Tag, Plus, Trash2, Edit2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -48,6 +48,7 @@ interface Attribute {
 export default function Equipment() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedAttribute, setSelectedAttribute] = useState<Attribute | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -81,6 +82,11 @@ export default function Equipment() {
     },
   });
 
+  const filteredAttributes = attributes.filter((attr) =>
+    attr.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    attr.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const { error } = await supabase.from("vehicle_attributes").insert([{
@@ -91,12 +97,12 @@ export default function Equipment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["equipment-attributes"] });
-      toast.success("Varustelu lisätty onnistuneesti");
+      toast.success("Attribuutti lisätty onnistuneesti");
       setIsAddDialogOpen(false);
       resetForm();
     },
     onError: () => {
-      toast.error("Virhe lisättäessä varustelua");
+      toast.error("Virhe lisättäessä attribuuttia");
     },
   });
 
@@ -113,12 +119,12 @@ export default function Equipment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["equipment-attributes"] });
-      toast.success("Varustelu päivitetty onnistuneesti");
+      toast.success("Attribuutti päivitetty onnistuneesti");
       setSelectedAttribute(null);
       resetForm();
     },
     onError: () => {
-      toast.error("Virhe päivitettäessä varustelua");
+      toast.error("Virhe päivitettäessä attribuuttia");
     },
   });
 
@@ -132,10 +138,10 @@ export default function Equipment() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["equipment-attributes"] });
-      toast.success("Varustelu poistettu onnistuneesti");
+      toast.success("Attribuutti poistettu onnistuneesti");
     },
     onError: () => {
-      toast.error("Virhe poistettaessa varustelua");
+      toast.error("Virhe poistettaessa attribuuttia");
     },
   });
 
@@ -163,27 +169,6 @@ export default function Equipment() {
     }
   };
 
-  // Common equipment presets
-  const presets = [
-    { name: "Inva-hissi", description: "Pyörätuolihissi" },
-    { name: "Paarikuljetus", description: "Paarivarustus" },
-    { name: "Porraskiipijä", description: "Porraskiipijävarustus" },
-    { name: "Sähköauto", description: "Täyssähköauto" },
-    { name: "Hybridi", description: "Hybridiauto" },
-    { name: "Koulukyyti", description: "Koulukuljetusvarustus" },
-    { name: "Ruotsinkielinen kuljettaja", description: "Kuljettaja puhuu ruotsia" },
-    { name: "Englanninkielinen kuljettaja", description: "Kuljettaja puhuu englantia" },
-    { name: "Lastensistuimia", description: "Lasten turvaistuimet" },
-    { name: "Tilataksi", description: "7+ hengen ajoneuvo" },
-  ];
-
-  const addPreset = (preset: { name: string; description: string }) => {
-    createMutation.mutate({
-      name: preset.name,
-      description: preset.description,
-    });
-  };
-
   const AttributeForm = () => (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
@@ -202,7 +187,7 @@ export default function Equipment() {
           id="description"
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          placeholder="Varustelun tarkempi kuvaus..."
+          placeholder="Attribuutin tarkempi kuvaus..."
           rows={3}
         />
       </div>
@@ -228,63 +213,44 @@ export default function Equipment() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Varustelu</h1>
+            <h1 className="text-3xl font-bold text-foreground">Attribuutit</h1>
             <p className="text-muted-foreground mt-1">
-              Hallitse ajoneuvojen varustelutietoja ja ominaisuuksia
+              Hallitse ajoneuvojen attribuutteja ja ominaisuuksia
             </p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
-                Lisää varustelu
+                Lisää attribuutti
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Lisää uusi varustelu</DialogTitle>
+                <DialogTitle>Lisää uusi attribuutti</DialogTitle>
               </DialogHeader>
               <AttributeForm />
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Quick Add Presets */}
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Pikavalintoja</CardTitle>
-            <CardDescription>
-              Klikkaa lisätäksesi yleisiä varustelutyyppejä
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {presets
-                .filter((preset) => !attributes.some((a) => a.name === preset.name))
-                .map((preset) => (
-                  <Badge
-                    key={preset.name}
-                    variant="outline"
-                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                    onClick={() => addPreset(preset)}
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    {preset.name}
-                  </Badge>
-                ))}
-              {presets.filter((preset) => !attributes.some((a) => a.name === preset.name)).length === 0 && (
-                <p className="text-sm text-muted-foreground">Kaikki pikavalinnat on jo lisätty</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Search */}
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Hae attribuutteja..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
 
         {/* Attributes Table */}
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Tag className="h-5 w-5 text-primary" />
-              Varustelutyypit ({attributes.length})
+              Attribuutit ({filteredAttributes.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -292,9 +258,9 @@ export default function Equipment() {
               <div className="text-center py-8 text-muted-foreground">
                 Ladataan...
               </div>
-            ) : attributes.length === 0 ? (
+            ) : filteredAttributes.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Ei varustelutietoja. Lisää uusia yllä olevista pikavalinnosta tai "Lisää varustelu" -painikkeella.
+                {searchQuery ? "Ei hakutuloksia" : "Ei attribuutteja. Lisää uusia \"Lisää attribuutti\" -painikkeella."}
               </div>
             ) : (
               <Table>
@@ -307,7 +273,7 @@ export default function Equipment() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {attributes.map((attribute) => (
+                  {filteredAttributes.map((attribute) => (
                     <TableRow key={attribute.id}>
                       <TableCell className="font-medium">
                         <Badge variant="secondary">{attribute.name}</Badge>
@@ -336,13 +302,13 @@ export default function Equipment() {
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>
-                                  Poista varustelu?
+                                  Poista attribuutti?
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Haluatko varmasti poistaa varustelun "{attribute.name}"? 
-                                  {attribute.vehicle_count > 0 && (
+                                  Haluatko varmasti poistaa attribuutin "{attribute.name}"? 
+                                  {attribute.vehicle_count! > 0 && (
                                     <span className="block mt-2 font-medium text-destructive">
-                                      Varustelu on liitetty {attribute.vehicle_count} ajoneuvoon.
+                                      Attribuutti on liitetty {attribute.vehicle_count} ajoneuvoon.
                                     </span>
                                   )}
                                 </AlertDialogDescription>
@@ -380,7 +346,7 @@ export default function Equipment() {
         >
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Muokkaa varustelua: {selectedAttribute?.name}</DialogTitle>
+              <DialogTitle>Muokkaa attribuuttia: {selectedAttribute?.name}</DialogTitle>
             </DialogHeader>
             <AttributeForm />
           </DialogContent>
