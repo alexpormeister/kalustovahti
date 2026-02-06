@@ -22,13 +22,13 @@ export default function Auth() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session) {
-          navigate("/dashboard");
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        navigate("/dashboard");
       }
-    );
+    });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -83,16 +83,14 @@ export default function Auth() {
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary mb-4">
             <Car className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-primary">Lähitaksi</h1>
+          <h1 className="text-2xl font-bold text-black">Lähitaksi</h1>
           <p className="text-muted-foreground">Kumppaninhallintajärjestelmä</p>
         </div>
 
         <Card className="glass-card">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl text-center">Kirjaudu sisään</CardTitle>
-            <CardDescription className="text-center">
-              Käytä järjestelmänvalvojan antamia tunnuksia
-            </CardDescription>
+            <CardDescription className="text-center">Käytä järjestelmänvalvojan antamia tunnuksia</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -110,9 +108,7 @@ export default function Auth() {
                     required
                   />
                 </div>
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
+                {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="login-password">Salasana</Label>
@@ -128,15 +124,13 @@ export default function Auth() {
                     required
                   />
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
+                {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Kirjaudutaan..." : "Kirjaudu sisään"}
               </Button>
             </form>
-            
+
             <div className="mt-6 text-center">
               <p className="text-sm text-muted-foreground">
                 Tarvitsetko tunnukset? Ota yhteyttä järjestelmänvalvojaan.
