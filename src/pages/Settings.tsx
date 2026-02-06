@@ -39,10 +39,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Settings as SettingsIcon, User, Shield, Bell, Tag, Users, Edit2, Trash2, Plus, UserPlus } from "lucide-react";
+import { Shield, Tag, Users, Edit2, Trash2, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { ProfileSettings } from "@/components/settings/ProfileSettings";
+import { NotificationSettings } from "@/components/settings/NotificationSettings";
+import { SystemSettings } from "@/components/settings/SystemSettings";
+import { DataImportExport } from "@/components/settings/DataImportExport";
+import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
 
 type AppRole = "system_admin" | "contract_manager" | "hardware_ops" | "support";
 
@@ -502,25 +507,10 @@ export default function Settings() {
         )}
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Card className="glass-card">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <User className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Profiili</CardTitle>
-                  <CardDescription>Hallitse profiilitietojasi</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Tulossa pian: profiilitietojen muokkaus, salasanan vaihto.
-              </p>
-            </CardContent>
-          </Card>
+          {/* Profile Settings */}
+          <ProfileSettings />
 
+          {/* Access Rights Card */}
           <Card className="glass-card">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -542,6 +532,10 @@ export default function Settings() {
             </CardContent>
           </Card>
 
+          {/* Notification Settings */}
+          <NotificationSettings />
+
+          {/* Equipment Management (Admin only) */}
           {isAdmin && (
             <Card className="glass-card">
               <CardHeader>
@@ -566,43 +560,14 @@ export default function Settings() {
             </Card>
           )}
 
-          <Card className="glass-card">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Bell className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Ilmoitukset</CardTitle>
-                  <CardDescription>Sähköposti- ja push-ilmoitukset</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Tulossa pian: ilmoitusasetukset huolloista, ajokorttien vanhentumisesta.
-              </p>
-            </CardContent>
-          </Card>
+          {/* System Settings */}
+          <SystemSettings isAdmin={isAdmin} />
 
-          <Card className="glass-card md:col-span-2">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <SettingsIcon className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">Järjestelmä</CardTitle>
-                  <CardDescription>Yleiset järjestelmäasetukset</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Tulossa pian: yrityksen tiedot, laskutusasetukset, API-integraatiot.
-              </p>
-            </CardContent>
-          </Card>
+          {/* Data Import/Export */}
+          <DataImportExport isAdmin={isAdmin} />
+
+          {/* Audit Log Viewer */}
+          <AuditLogViewer isAdmin={isAdmin} />
         </div>
 
         {/* Edit User Dialog */}
