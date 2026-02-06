@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -38,12 +39,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Settings as SettingsIcon, User, Shield, Bell, Tag, Users, Edit2, Trash2, Plus } from "lucide-react";
+import { Settings as SettingsIcon, User, Shield, Bell, Tag, Users, Edit2, Trash2, Plus, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
-type AppRole = "admin" | "manager" | "driver";
+type AppRole = "system_admin" | "contract_manager" | "hardware_ops" | "support";
 
 interface UserProfile {
   id: string;
@@ -55,15 +56,24 @@ interface UserProfile {
 }
 
 const roleLabels: Record<AppRole, string> = {
-  admin: "Ylläpitäjä",
-  manager: "Yrittäjä",
-  driver: "Kuljettaja",
+  system_admin: "Pääkäyttäjä (IT)",
+  contract_manager: "Sopimushallinta",
+  hardware_ops: "Laitehallinta",
+  support: "Asiakaspalvelu",
+};
+
+const roleDescriptions: Record<AppRole, string> = {
+  system_admin: "Täydet oikeudet kaikkeen",
+  contract_manager: "Yritys- ja autotietojen muokkaus",
+  hardware_ops: "Laitteiden hallinta, sopimukset vain luku",
+  support: "Vain lukuoikeus kaikkeen",
 };
 
 const roleColors: Record<AppRole, string> = {
-  admin: "bg-destructive text-destructive-foreground",
-  manager: "bg-primary text-primary-foreground",
-  driver: "bg-muted text-muted-foreground",
+  system_admin: "bg-destructive text-destructive-foreground",
+  contract_manager: "bg-primary text-primary-foreground",
+  hardware_ops: "bg-status-maintenance text-status-maintenance-foreground",
+  support: "bg-muted text-muted-foreground",
 };
 
 export default function Settings() {
@@ -71,11 +81,18 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     driver_number: "",
     phone: "",
-    role: "driver" as AppRole,
+    role: "support" as AppRole,
+  });
+  const [newUserData, setNewUserData] = useState({
+    email: "",
+    password: "",
+    full_name: "",
+    role: "support" as AppRole,
   });
 
   // Check if current user is admin
@@ -88,7 +105,7 @@ export default function Settings() {
           .select("role")
           .eq("user_id", user.id)
           .single();
-        setIsAdmin(data?.role === "admin");
+        setIsAdmin(data?.role === "system_admin");
       }
     };
     checkAdmin();
@@ -118,7 +135,7 @@ export default function Settings() {
 
       return profiles.map((p: any) => ({
         ...p,
-        role: rolesMap.get(p.id) || "driver",
+        role: rolesMap.get(p.id) || "support",
       })) as UserProfile[];
     },
     enabled: isAdmin,
@@ -158,6 +175,55 @@ export default function Settings() {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: async (data: typeof newUserData) => {
+      // Create user via Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.full_name,
+          },
+        },
+      });
+      
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Käyttäjän luonti epäonnistui");
+
+      // Update the user's role (profile is created automatically by trigger)
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .update({ role: data.role })
+        .eq("user_id", authData.user.id);
+      
+      if (roleError) {
+        console.error("Role update error:", roleError);
+        // Role might not exist yet if trigger hasn't run, try insert
+        const { error: insertError } = await supabase
+          .from("user_roles")
+          .insert({ user_id: authData.user.id, role: data.role });
+        if (insertError) throw insertError;
+      }
+
+      return authData.user;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+      toast.success("Käyttäjä luotu onnistuneesti! Käyttäjä saa sähköpostin tunnuksistaan.");
+      setIsAddUserDialogOpen(false);
+      setNewUserData({ email: "", password: "", full_name: "", role: "support" });
+    },
+    onError: (error: any) => {
+      console.error("Create user error:", error);
+      if (error.message?.includes("already registered")) {
+        toast.error("Tämä sähköpostiosoite on jo käytössä");
+      } else {
+        toast.error("Virhe luotaessa käyttäjää: " + error.message);
+      }
+    },
+  });
+
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
       // Delete role first
@@ -182,7 +248,7 @@ export default function Settings() {
     },
     onError: (error) => {
       console.error("Delete error:", error);
-      toast.error("Virhe poistettaessa käyttäjää. Käyttäjän auth-tietoja ei voi poistaa tästä.");
+      toast.error("Virhe poistettaessa käyttäjää");
     },
   });
 
@@ -191,7 +257,7 @@ export default function Settings() {
       full_name: "",
       driver_number: "",
       phone: "",
-      role: "driver",
+      role: "support",
     });
   };
 
@@ -201,7 +267,7 @@ export default function Settings() {
       full_name: user.full_name || "",
       driver_number: user.driver_number || "",
       phone: user.phone || "",
-      role: user.role || "driver",
+      role: (user.role as AppRole) || "support",
     });
   };
 
@@ -214,6 +280,19 @@ export default function Settings() {
         newRole: formData.role,
       });
     }
+  };
+
+  const handleCreateUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserData.email || !newUserData.password || !newUserData.full_name) {
+      toast.error("Täytä kaikki pakolliset kentät");
+      return;
+    }
+    if (newUserData.password.length < 6) {
+      toast.error("Salasanan tulee olla vähintään 6 merkkiä");
+      return;
+    }
+    createUserMutation.mutate(newUserData);
   };
 
   return (
@@ -240,9 +319,118 @@ export default function Settings() {
                     <CardDescription>Hallitse käyttäjiä ja heidän roolejaan</CardDescription>
                   </div>
                 </div>
+                <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="gap-2">
+                      <UserPlus className="h-4 w-4" />
+                      Lisää käyttäjä
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Lisää uusi käyttäjä</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateUser} className="space-y-4">
+                      <div>
+                        <Label htmlFor="new-email">Sähköposti *</Label>
+                        <Input
+                          id="new-email"
+                          type="email"
+                          value={newUserData.email}
+                          onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
+                          placeholder="nimi@lahitaksi.fi"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="new-password">Salasana *</Label>
+                        <Input
+                          id="new-password"
+                          type="password"
+                          value={newUserData.password}
+                          onChange={(e) => setNewUserData({ ...newUserData, password: e.target.value })}
+                          placeholder="Vähintään 6 merkkiä"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="new-name">Nimi *</Label>
+                        <Input
+                          id="new-name"
+                          value={newUserData.full_name}
+                          onChange={(e) => setNewUserData({ ...newUserData, full_name: e.target.value })}
+                          placeholder="Matti Meikäläinen"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="new-role">Rooli</Label>
+                        <Select
+                          value={newUserData.role}
+                          onValueChange={(value: AppRole) => setNewUserData({ ...newUserData, role: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="system_admin">
+                              <div className="flex flex-col">
+                                <span>Pääkäyttäjä (IT)</span>
+                                <span className="text-xs text-muted-foreground">Täydet oikeudet</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="contract_manager">
+                              <div className="flex flex-col">
+                                <span>Sopimushallinta</span>
+                                <span className="text-xs text-muted-foreground">Yritys- ja autotiedot</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="hardware_ops">
+                              <div className="flex flex-col">
+                                <span>Laitehallinta</span>
+                                <span className="text-xs text-muted-foreground">Laitteet, sopimukset luku</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="support">
+                              <div className="flex flex-col">
+                                <span>Asiakaspalvelu</span>
+                                <span className="text-xs text-muted-foreground">Vain lukuoikeus</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsAddUserDialogOpen(false)}
+                        >
+                          Peruuta
+                        </Button>
+                        <Button type="submit" disabled={createUserMutation.isPending}>
+                          {createUserMutation.isPending ? "Luodaan..." : "Luo käyttäjä"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardHeader>
             <CardContent>
+              {/* Role explanations */}
+              <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-medium mb-2">Roolit ja oikeudet:</h4>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(Object.keys(roleLabels) as AppRole[]).map((role) => (
+                    <div key={role} className="flex items-start gap-2">
+                      <Badge className={roleColors[role]}>{roleLabels[role]}</Badge>
+                      <span className="text-xs text-muted-foreground">{roleDescriptions[role]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {isLoading ? (
                 <div className="text-center py-4 text-muted-foreground">Ladataan...</div>
               ) : users.length === 0 ? (
@@ -252,7 +440,6 @@ export default function Settings() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nimi</TableHead>
-                      <TableHead>Kuljettajanumero</TableHead>
                       <TableHead>Puhelin</TableHead>
                       <TableHead>Rooli</TableHead>
                       <TableHead></TableHead>
@@ -264,11 +451,10 @@ export default function Settings() {
                         <TableCell className="font-medium">
                           {user.full_name || "Ei nimeä"}
                         </TableCell>
-                        <TableCell>{user.driver_number || "—"}</TableCell>
                         <TableCell>{user.phone || "—"}</TableCell>
                         <TableCell>
-                          <Badge className={user.role ? roleColors[user.role] : ""}>
-                            {user.role ? roleLabels[user.role] : "—"}
+                          <Badge className={user.role ? roleColors[user.role as AppRole] : ""}>
+                            {user.role ? roleLabels[user.role as AppRole] : "—"}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -290,8 +476,7 @@ export default function Settings() {
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Poista käyttäjä?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Haluatko varmasti poistaa käyttäjän "{user.full_name}"? 
-                                    Tämä poistaa käyttäjän profiilin ja roolin, mutta ei auth-tietoja.
+                                    Haluatko varmasti poistaa käyttäjän "{user.full_name}"?
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
@@ -352,32 +537,34 @@ export default function Settings() {
               <p className="text-sm text-muted-foreground">
                 {isAdmin 
                   ? "Voit hallita käyttäjien rooleja yllä olevasta taulukosta." 
-                  : "Ota yhteyttä ylläpitäjään muuttaaksesi käyttöoikeuksia."}
+                  : "Ota yhteyttä pääkäyttäjään muuttaaksesi käyttöoikeuksia."}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="glass-card">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Tag className="h-5 w-5 text-primary" />
+          {isAdmin && (
+            <Card className="glass-card">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Tag className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">Varustelu</CardTitle>
+                    <CardDescription>Dynaamisten attribuuttien hallinta</CardDescription>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-lg">Varustelu</CardTitle>
-                  <CardDescription>Dynaamisten attribuuttien hallinta</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-3">
-                Hallitse ajoneuvojen varustelutietoja, kuten inva-hissi, paarivarustus, porraskiipijä.
-              </p>
-              <Button variant="outline" size="sm" onClick={() => navigate("/varustelu")}>
-                Siirry varusteluun
-              </Button>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Hallitse ajoneuvojen varustelutietoja, kuten inva-hissi, paarivarustus, porraskiipijä.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => navigate("/varustelu")}>
+                  Siirry varusteluun
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="glass-card">
             <CardHeader>
@@ -469,9 +656,10 @@ export default function Settings() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Ylläpitäjä</SelectItem>
-                    <SelectItem value="manager">Yrittäjä</SelectItem>
-                    <SelectItem value="driver">Kuljettaja</SelectItem>
+                    <SelectItem value="system_admin">Pääkäyttäjä (IT)</SelectItem>
+                    <SelectItem value="contract_manager">Sopimushallinta</SelectItem>
+                    <SelectItem value="hardware_ops">Laitehallinta</SelectItem>
+                    <SelectItem value="support">Asiakaspalvelu</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
