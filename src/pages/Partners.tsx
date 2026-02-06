@@ -205,12 +205,12 @@ export default function Partners() {
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2 w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
                 Lisää autoilija
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Lisää uusi autoilija</DialogTitle>
               </DialogHeader>
@@ -410,7 +410,7 @@ export default function Partners() {
           open={!!selectedCompany}
           onOpenChange={(open) => !open && setSelectedCompany(null)}
         >
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Muokkaa autoilijaa: {selectedCompany?.name}</DialogTitle>
             </DialogHeader>

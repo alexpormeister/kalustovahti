@@ -614,19 +614,19 @@ export default function QualityControl() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Laadunvalvonta</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Laadunvalvonta</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Hallitse laatutapauksia ja asiakaspalautteita
             </p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2 w-full sm:w-auto">
                 <Plus className="h-4 w-4" />
                 Lisää tapaus
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Lisää uusi laatutapaus</DialogTitle>
               </DialogHeader>
@@ -636,8 +636,8 @@ export default function QualityControl() {
         </div>
 
         {/* Search and Filters */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Hae kuvauksella, lähteellä..."
@@ -646,49 +646,58 @@ export default function QualityControl() {
               className="pl-10"
             />
           </div>
-          <Select
-            value={statusFilter}
-            onValueChange={setStatusFilter}
-          >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Tila" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Kaikki tilat</SelectItem>
-              {Object.entries(statusLabels).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <CalendarIcon className="h-4 w-4" />
-                {dateFilter
-                  ? format(dateFilter, "d.M.yyyy", { locale: fi })
-                  : "Päivämäärä"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={dateFilter}
-                onSelect={setDateFilter}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-          {dateFilter && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setDateFilter(undefined)}
+          <div className="flex gap-2 flex-wrap">
+            <Select
+              value={statusFilter}
+              onValueChange={setStatusFilter}
             >
-              Tyhjennä
-            </Button>
-          )}
+              <SelectTrigger className="w-[130px] sm:w-[150px]">
+                <SelectValue placeholder="Tila" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Kaikki tilat</SelectItem>
+                {Object.entries(statusLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    {dateFilter
+                      ? format(dateFilter, "d.M.yyyy", { locale: fi })
+                      : "Päivämäärä"}
+                  </span>
+                  <span className="sm:hidden">
+                    {dateFilter
+                      ? format(dateFilter, "d.M", { locale: fi })
+                      : "Pvm"}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateFilter}
+                  onSelect={setDateFilter}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            {dateFilter && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDateFilter(undefined)}
+              >
+                Tyhjennä
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Edit Dialog */}
@@ -701,7 +710,7 @@ export default function QualityControl() {
             }
           }}
         >
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Muokkaa tapausta</DialogTitle>
             </DialogHeader>
@@ -709,81 +718,136 @@ export default function QualityControl() {
           </DialogContent>
         </Dialog>
 
-        {/* Table */}
-        <div className="glass-card rounded-xl overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="font-semibold text-foreground">Pvm</TableHead>
-                <TableHead className="font-semibold text-foreground">Tyyppi</TableHead>
-                <TableHead className="font-semibold text-foreground">Ajoneuvo</TableHead>
-                <TableHead className="font-semibold text-foreground">Kuljettaja</TableHead>
-                <TableHead className="font-semibold text-foreground">Kuvaus</TableHead>
-                <TableHead className="font-semibold text-foreground">Tila</TableHead>
-                <TableHead className="font-semibold text-foreground">Käsittelijä</TableHead>
-                <TableHead className="w-[80px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                    Ladataan...
-                  </TableCell>
-                </TableRow>
-              ) : filteredIncidents.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    <ClipboardCheck className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-muted-foreground">Ei laatutapauksia</p>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredIncidents.map((incident) => (
-                  <TableRow key={incident.id} className="border-border hover:bg-muted/50">
-                    <TableCell className="font-medium">
-                      {format(new Date(incident.incident_date), "d.M.yyyy", { locale: fi })}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
+        {/* Mobile Card View */}
+        <div className="block sm:hidden space-y-3">
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Ladataan...</div>
+          ) : filteredIncidents.length === 0 ? (
+            <div className="text-center py-8">
+              <ClipboardCheck className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-muted-foreground">Ei laatutapauksia</p>
+            </div>
+          ) : (
+            filteredIncidents.map((incident) => (
+              <div
+                key={incident.id}
+                className="glass-card rounded-lg p-4 space-y-3"
+                onClick={() => handleEdit(incident)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-xs">
                         {incidentTypeLabels[incident.incident_type]}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {incident.vehicle
-                        ? `${incident.vehicle.registration_number}`
-                        : "—"}
-                    </TableCell>
-                    <TableCell>{incident.driver?.full_name || "—"}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {incident.description}
-                    </TableCell>
-                    <TableCell>
                       <Badge
                         variant="outline"
-                        className={cn("border", statusColors[incident.status])}
+                        className={cn("text-xs border", statusColors[incident.status])}
                       >
                         {statusLabels[incident.status]}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {incident.updater?.full_name || incident.creator?.full_name || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleEdit(incident)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                    </div>
+                    <p className="text-sm font-medium">
+                      {format(new Date(incident.incident_date), "d.M.yyyy", { locale: fi })}
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-2">
+                  {incident.description}
+                </p>
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  {incident.vehicle && (
+                    <span>Auto: {incident.vehicle.registration_number}</span>
+                  )}
+                  {incident.driver?.full_name && (
+                    <span>Kuljettaja: {incident.driver.full_name}</span>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table */}
+        <div className="hidden sm:block glass-card rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="font-semibold text-foreground">Pvm</TableHead>
+                  <TableHead className="font-semibold text-foreground">Tyyppi</TableHead>
+                  <TableHead className="font-semibold text-foreground">Ajoneuvo</TableHead>
+                  <TableHead className="font-semibold text-foreground">Kuljettaja</TableHead>
+                  <TableHead className="font-semibold text-foreground">Kuvaus</TableHead>
+                  <TableHead className="font-semibold text-foreground">Tila</TableHead>
+                  <TableHead className="font-semibold text-foreground">Käsittelijä</TableHead>
+                  <TableHead className="w-[80px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                      Ladataan...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : filteredIncidents.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-24 text-center">
+                      <ClipboardCheck className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-muted-foreground">Ei laatutapauksia</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredIncidents.map((incident) => (
+                    <TableRow key={incident.id} className="border-border hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        {format(new Date(incident.incident_date), "d.M.yyyy", { locale: fi })}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {incidentTypeLabels[incident.incident_type]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {incident.vehicle
+                          ? `${incident.vehicle.registration_number}`
+                          : "—"}
+                      </TableCell>
+                      <TableCell>{incident.driver?.full_name || "—"}</TableCell>
+                      <TableCell className="max-w-[200px] truncate">
+                        {incident.description}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn("border", statusColors[incident.status])}
+                        >
+                          {statusLabels[incident.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {incident.updater?.full_name || incident.creator?.full_name || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleEdit(incident)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     </DashboardLayout>

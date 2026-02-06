@@ -306,12 +306,12 @@ export default function Drivers() {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button className="gap-2" onClick={handleOpenCreate}>
+              <Button className="gap-2 w-full sm:w-auto" onClick={handleOpenCreate}>
                 <Plus className="h-4 w-4" />
                 Lisää kuljettaja
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {isCreating ? "Lisää uusi kuljettaja" : "Muokkaa kuljettajaa"}
