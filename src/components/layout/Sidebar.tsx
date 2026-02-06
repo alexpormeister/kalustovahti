@@ -9,19 +9,28 @@ import {
   Tag,
   Smartphone,
   ClipboardCheck,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePermissions, PageKey } from "@/hooks/usePermissions";
 
-const navigation = [
-  { name: "Hallintapaneeli", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Autoilijat", href: "/autoilijat", icon: Building2 },
-  { name: "Kalustolista", href: "/kalusto", icon: Car },
-  { name: "Laitevarasto", href: "/laitteet", icon: Smartphone },
-  { name: "Kuljettajat", href: "/kuljettajat", icon: Users },
-  { name: "Attribuutit", href: "/varustelu", icon: Tag },
-  { name: "Laadunvalvonta", href: "/laadunvalvonta", icon: ClipboardCheck },
-  { name: "Asetukset", href: "/asetukset", icon: Settings },
-  { name: "Käyttäjät", href: "/kayttajat", icon: Users },
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  pageKey: PageKey;
+}
+
+const navigation: NavigationItem[] = [
+  { name: "Hallintapaneeli", href: "/dashboard", icon: LayoutDashboard, pageKey: "dashboard" },
+  { name: "Autoilijat", href: "/autoilijat", icon: Building2, pageKey: "autoilijat" },
+  { name: "Kalustolista", href: "/kalusto", icon: Car, pageKey: "kalusto" },
+  { name: "Laitevarasto", href: "/laitteet", icon: Smartphone, pageKey: "laitteet" },
+  { name: "Kuljettajat", href: "/kuljettajat", icon: Users, pageKey: "kuljettajat" },
+  { name: "Attribuutit", href: "/varustelu", icon: Tag, pageKey: "varustelu" },
+  { name: "Laadunvalvonta", href: "/laadunvalvonta", icon: ClipboardCheck, pageKey: "laadunvalvonta" },
+  { name: "Asetukset", href: "/asetukset", icon: Settings, pageKey: "asetukset" },
+  { name: "Käyttäjät", href: "/kayttajat", icon: Users, pageKey: "kayttajat" },
 ];
 
 interface SidebarProps {
@@ -30,6 +39,13 @@ interface SidebarProps {
 
 export function Sidebar({ onLogout }: SidebarProps) {
   const location = useLocation();
+  const { isSystemAdmin, permissions, isLoading } = usePermissions();
+
+  // Filter navigation items based on permissions
+  const visibleNavigation = navigation.filter((item) => {
+    if (isLoading) return true; // Show all while loading
+    return permissions[item.pageKey]?.can_view;
+  });
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar border-r border-sidebar-border">
@@ -51,7 +67,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
               <Link
@@ -67,6 +83,20 @@ export function Sidebar({ onLogout }: SidebarProps) {
               </Link>
             );
           })}
+          
+          {/* Role Management - Only for system admins */}
+          {isSystemAdmin && (
+            <Link
+              to="/roolit"
+              className={cn(
+                "sidebar-nav-item",
+                location.pathname === "/roolit" && "sidebar-nav-item-active"
+              )}
+            >
+              <ShieldCheck className="h-5 w-5" />
+              <span className="font-medium">Roolien hallinta</span>
+            </Link>
+          )}
         </nav>
 
         {/* Footer */}

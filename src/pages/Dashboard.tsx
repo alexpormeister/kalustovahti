@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { ProtectedPage } from "@/components/auth/ProtectedPage";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -105,206 +106,208 @@ export default function Dashboard() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              Hallintapaneeli
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Tervetuloa Lähitaksi-kumppaninhallintaan
-            </p>
+    <ProtectedPage pageKey="dashboard">
+      <DashboardLayout>
+        <div className="space-y-8">
+          {/* Header */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">
+                Hallintapaneeli
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Tervetuloa Lähitaksi-kumppaninhallintaan
+              </p>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Aktiiviset sopimukset"
+              value={activeContracts}
+              icon={<FileCheck className="h-6 w-6 text-primary" />}
+              description={`${companiesData.length} yritystä yhteensä`}
+            />
+            <StatCard
+              title="Ajoneuvoja"
+              value={vehiclesData.length}
+              icon={<Car className="h-6 w-6 text-primary" />}
+              description={`${activeVehicles} aktiivista`}
+            />
+            <StatCard
+              title="Kuljettajia"
+              value={driversCount}
+              icon={<Users className="h-6 w-6 text-primary" />}
+            />
+            <StatCard
+              title="Laitteita"
+              value={hardwareCount}
+              icon={<Smartphone className="h-6 w-6 text-primary" />}
+              description="Maksupäätteet, SIM-kortit"
+            />
+          </div>
+
+          {/* Quick Stats Row */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Active Companies */}
+            <Card className="glass-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  Viimeisimmät kumppanit
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {companiesData.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Ei yrityksiä</p>
+                ) : (
+                  <div className="space-y-2">
+                    {companiesData.slice(0, 5).map((company) => (
+                      <div
+                        key={company.id}
+                        className="flex items-center justify-between py-1"
+                      >
+                        <span className="text-sm font-medium">{company.name}</span>
+                        <Badge
+                          variant={
+                            company.contract_status === "active"
+                              ? "default"
+                              : "secondary"
+                          }
+                          className={
+                            company.contract_status === "active"
+                              ? "bg-status-active text-status-active-foreground"
+                              : ""
+                          }
+                        >
+                          {company.contract_status === "active"
+                            ? "Aktiivinen"
+                            : company.contract_status === "pending"
+                            ? "Odottaa"
+                            : company.contract_status || "—"}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button
+                  variant="ghost"
+                  className="w-full mt-4"
+                  onClick={() => navigate("/autoilijat")}
+                >
+                  Näytä kaikki
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Vehicle Status */}
+            <Card className="glass-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Car className="h-5 w-5 text-primary" />
+                  Kaluston tila
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Aktiiviset</span>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-status-active rounded-full"
+                          style={{
+                            width: `${
+                              vehiclesData.length > 0
+                                ? (activeVehicles / vehiclesData.length) * 100
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium w-8 text-right">
+                        {activeVehicles}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Huollossa</span>
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-status-maintenance rounded-full"
+                          style={{
+                            width: `${
+                              vehiclesData.length > 0
+                                ? (maintenanceVehicles / vehiclesData.length) * 100
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium w-8 text-right">
+                        {maintenanceVehicles}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="w-full mt-4"
+                  onClick={() => navigate("/kalusto")}
+                >
+                  Kalustolista
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card className="glass-card">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  Pikatoiminnot
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => navigate("/autoilijat")}
+                >
+                  <Building2 className="h-4 w-4 mr-2" />
+                  Lisää autoilija
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => navigate("/kalusto")}
+                >
+                  <Car className="h-4 w-4 mr-2" />
+                  Lisää ajoneuvo
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => navigate("/laitteet")}
+                >
+                  <Smartphone className="h-4 w-4 mr-2" />
+                  Lisää laite
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => navigate("/varustelu")}
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Hallitse varustelua
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
-
-        {/* Stats Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Aktiiviset sopimukset"
-            value={activeContracts}
-            icon={<FileCheck className="h-6 w-6 text-primary" />}
-            description={`${companiesData.length} yritystä yhteensä`}
-          />
-          <StatCard
-            title="Ajoneuvoja"
-            value={vehiclesData.length}
-            icon={<Car className="h-6 w-6 text-primary" />}
-            description={`${activeVehicles} aktiivista`}
-          />
-          <StatCard
-            title="Kuljettajia"
-            value={driversCount}
-            icon={<Users className="h-6 w-6 text-primary" />}
-          />
-          <StatCard
-            title="Laitteita"
-            value={hardwareCount}
-            icon={<Smartphone className="h-6 w-6 text-primary" />}
-            description="Maksupäätteet, SIM-kortit"
-          />
-        </div>
-
-        {/* Quick Stats Row */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Active Companies */}
-          <Card className="glass-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-primary" />
-                Viimeisimmät kumppanit
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {companiesData.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Ei yrityksiä</p>
-              ) : (
-                <div className="space-y-2">
-                  {companiesData.slice(0, 5).map((company) => (
-                    <div
-                      key={company.id}
-                      className="flex items-center justify-between py-1"
-                    >
-                      <span className="text-sm font-medium">{company.name}</span>
-                      <Badge
-                        variant={
-                          company.contract_status === "active"
-                            ? "default"
-                            : "secondary"
-                        }
-                        className={
-                          company.contract_status === "active"
-                            ? "bg-status-active text-status-active-foreground"
-                            : ""
-                        }
-                      >
-                        {company.contract_status === "active"
-                          ? "Aktiivinen"
-                          : company.contract_status === "pending"
-                          ? "Odottaa"
-                          : company.contract_status || "—"}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <Button
-                variant="ghost"
-                className="w-full mt-4"
-                onClick={() => navigate("/autoilijat")}
-              >
-                Näytä kaikki
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Vehicle Status */}
-          <Card className="glass-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Car className="h-5 w-5 text-primary" />
-                Kaluston tila
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Aktiiviset</span>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-status-active rounded-full"
-                        style={{
-                          width: `${
-                            vehiclesData.length > 0
-                              ? (activeVehicles / vehiclesData.length) * 100
-                              : 0
-                          }%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-sm font-medium w-8 text-right">
-                      {activeVehicles}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Huollossa</span>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-status-maintenance rounded-full"
-                        style={{
-                          width: `${
-                            vehiclesData.length > 0
-                              ? (maintenanceVehicles / vehiclesData.length) * 100
-                              : 0
-                          }%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-sm font-medium w-8 text-right">
-                      {maintenanceVehicles}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                className="w-full mt-4"
-                onClick={() => navigate("/kalusto")}
-              >
-                Kalustolista
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card className="glass-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Pikatoiminnot
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => navigate("/autoilijat")}
-              >
-                <Building2 className="h-4 w-4 mr-2" />
-                Lisää autoilija
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => navigate("/kalusto")}
-              >
-                <Car className="h-4 w-4 mr-2" />
-                Lisää ajoneuvo
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => navigate("/laitteet")}
-              >
-                <Smartphone className="h-4 w-4 mr-2" />
-                Lisää laite
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start"
-                onClick={() => navigate("/varustelu")}
-              >
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Hallitse varustelua
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </ProtectedPage>
   );
 }
