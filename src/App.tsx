@@ -14,6 +14,7 @@ import Equipment from "./pages/Equipment";
 import Settings from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
 import QualityControl from "./pages/QualityControl";
+import RoleManagement from "./pages/RoleManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/laadunvalvonta" element={<QualityControl />} />
           <Route path="/asetukset" element={<Settings />} />
           <Route path="/kayttajat" element={<UserManagement />} />
+          <Route path="/roolit" element={<RoleManagement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
