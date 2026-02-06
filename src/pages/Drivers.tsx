@@ -3,13 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -17,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Users, Search } from "lucide-react";
+import { Plus, Pencil, Users, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,6 +84,56 @@ export default function Drivers() {
     },
   });
 
+  // Create driver mutation
+  const createMutation = useMutation({
+    mutationFn: async (formData: DriverForm) => {
+      // Create user via Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: formData.full_name,
+          },
+        },
+      });
+      
+      if (authError) throw authError;
+      if (!authData.user) throw new Error("Kuljettajan luonti epäonnistui");
+
+      // Update the profile with driver info
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          full_name: formData.full_name,
+          phone: formData.phone || null,
+          driver_number: formData.driver_number,
+          driver_license_valid_until: formData.driver_license_valid_until
+            ? format(formData.driver_license_valid_until, "yyyy-MM-dd")
+            : null,
+        })
+        .eq("id", authData.user.id);
+
+      if (profileError) throw profileError;
+
+      return authData.user;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["drivers"] });
+      toast.success("Kuljettaja luotu onnistuneesti! Kuljettaja saa sähköpostin tunnuksistaan.");
+      setDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      console.error("Create driver error:", error);
+      if (error.message?.includes("already registered")) {
+        toast.error("Tämä sähköpostiosoite on jo käytössä");
+      } else {
+        toast.error("Virhe: " + error.message);
+      }
+    },
+  });
+
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (formData: DriverForm) => {
@@ -141,10 +184,25 @@ export default function Drivers() {
     setDialogOpen(true);
   };
 
+  const handleOpenCreate = () => {
+    resetForm();
+    setDialogOpen(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId) {
       updateMutation.mutate(form);
+    } else {
+      if (!form.email || !form.password) {
+        toast.error("Sähköposti ja salasana ovat pakollisia uudelle kuljettajalle");
+        return;
+      }
+      if (form.password.length < 6) {
+        toast.error("Salasanan tulee olla vähintään 6 merkkiä");
+        return;
+      }
+      createMutation.mutate(form);
     }
   };
 
@@ -168,6 +226,9 @@ export default function Drivers() {
     return expiryDate < new Date();
   };
 
+  const isCreating = !editingId;
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -183,16 +244,50 @@ export default function Drivers() {
             setDialogOpen(open);
             if (!open) resetForm();
           }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" onClick={handleOpenCreate}>
+                <Plus className="h-4 w-4" />
+                Lisää kuljettaja
+              </Button>
+            </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  Muokkaa kuljettajaa
+                  {isCreating ? "Lisää uusi kuljettaja" : "Muokkaa kuljettajaa"}
                 </DialogTitle>
                 <DialogDescription>
-                  Päivitä kuljettajan tiedot.
+                  {isCreating 
+                    ? "Syötä uuden kuljettajan tiedot. Kuljettaja saa sähköpostin kirjautumistunnuksistaan." 
+                    : "Päivitä kuljettajan tiedot."}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+                {isCreating && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Sähköposti *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={form.email}
+                        onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        placeholder="kuljettaja@esimerkki.fi"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Salasana *</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={form.password}
+                        onChange={(e) => setForm({ ...form, password: e.target.value })}
+                        placeholder="Vähintään 6 merkkiä"
+                        required
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="full_name">Nimi *</Label>
                   <Input
@@ -257,8 +352,8 @@ export default function Drivers() {
                   <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                     Peruuta
                   </Button>
-                  <Button type="submit" disabled={updateMutation.isPending}>
-                    {updateMutation.isPending ? "Tallennetaan..." : "Tallenna"}
+                  <Button type="submit" disabled={isPending}>
+                    {isPending ? "Tallennetaan..." : isCreating ? "Luo kuljettaja" : "Tallenna"}
                   </Button>
                 </div>
               </form>
@@ -344,14 +439,6 @@ export default function Drivers() {
               )}
             </TableBody>
           </Table>
-        </div>
-
-        {/* Info */}
-        <div className="text-sm text-muted-foreground">
-          <p>
-            💡 <strong>Vinkki:</strong> Uudet kuljettajat luodaan rekisteröitymällä järjestelmään. 
-            Ylläpitäjä voi sen jälkeen päivittää kuljettajanumerot ja muut tiedot.
-          </p>
         </div>
       </div>
     </DashboardLayout>

@@ -12,6 +12,7 @@ import Hardware from "./pages/Hardware";
 import Drivers from "./pages/Drivers";
 import Equipment from "./pages/Equipment";
 import Settings from "./pages/Settings";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/kuljettajat" element={<Drivers />} />
           <Route path="/varustelu" element={<Equipment />} />
           <Route path="/asetukset" element={<Settings />} />
+          <Route path="/kayttajat" element={<UserManagement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

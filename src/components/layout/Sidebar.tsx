@@ -18,8 +18,9 @@ const navigation = [
   { name: "Kalustolista", href: "/kalusto", icon: Car },
   { name: "Laitevarasto", href: "/laitteet", icon: Smartphone },
   { name: "Kuljettajat", href: "/kuljettajat", icon: Users },
-  { name: "Varustelu", href: "/varustelu", icon: Tag },
+  { name: "Attribuutit", href: "/varustelu", icon: Tag },
   { name: "Asetukset", href: "/asetukset", icon: Settings },
+  { name: "Käyttäjät", href: "/kayttajat", icon: Users },
 ];
 
 interface SidebarProps {
