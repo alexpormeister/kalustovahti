@@ -66,6 +66,8 @@ export default function Partners() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [businessIdError, setBusinessIdError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     business_id: "",
@@ -118,8 +120,16 @@ export default function Partners() {
       setIsAddDialogOpen(false);
       resetForm();
     },
-    onError: () => {
-      toast.error("Virhe lisättäessä autoilijaa");
+    onError: (error: any) => {
+      if (error?.message?.includes("companies_name_unique")) {
+        toast.error("Tämän niminen yritys on jo järjestelmässä");
+        setNameError("Yritys on jo järjestelmässä");
+      } else if (error?.message?.includes("companies_business_id_unique")) {
+        toast.error("Tällä Y-tunnuksella on jo yritys järjestelmässä");
+        setBusinessIdError("Y-tunnus on jo käytössä");
+      } else {
+        toast.error("Virhe lisättäessä autoilijaa");
+      }
     },
   });
 
@@ -137,8 +147,16 @@ export default function Partners() {
       setSelectedCompany(null);
       resetForm();
     },
-    onError: () => {
-      toast.error("Virhe päivitettäessä autoilijaa");
+    onError: (error: any) => {
+      if (error?.message?.includes("companies_name_unique")) {
+        toast.error("Tämän niminen yritys on jo järjestelmässä");
+        setNameError("Yritys on jo järjestelmässä");
+      } else if (error?.message?.includes("companies_business_id_unique")) {
+        toast.error("Tällä Y-tunnuksella on jo yritys järjestelmässä");
+        setBusinessIdError("Y-tunnus on jo käytössä");
+      } else {
+        toast.error("Virhe päivitettäessä autoilijaa");
+      }
     },
   });
 
@@ -152,6 +170,36 @@ export default function Partners() {
       contact_phone: "",
       contract_status: "active",
     });
+    setNameError(null);
+    setBusinessIdError(null);
+  };
+
+  // Check for duplicate name/business_id in real-time
+  const checkDuplicateName = (name: string) => {
+    const trimmedName = name.trim().toLowerCase();
+    const existingCompany = companies.find(
+      (c) => c.name.toLowerCase() === trimmedName && c.id !== selectedCompany?.id
+    );
+    if (existingCompany) {
+      setNameError("Tämän niminen yritys on jo järjestelmässä");
+    } else {
+      setNameError(null);
+    }
+  };
+
+  const checkDuplicateBusinessId = (businessId: string) => {
+    if (!businessId.trim()) {
+      setBusinessIdError(null);
+      return;
+    }
+    const existingCompany = companies.find(
+      (c) => c.business_id === businessId.trim() && c.id !== selectedCompany?.id
+    );
+    if (existingCompany) {
+      setBusinessIdError("Tällä Y-tunnuksella on jo yritys järjestelmässä");
+    } else {
+      setBusinessIdError(null);
+    }
   };
 
   const handleEdit = (company: Company) => {
@@ -169,6 +217,11 @@ export default function Partners() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Don't submit if there are validation errors
+    if (nameError || businessIdError) {
+      toast.error("Korjaa lomakkeen virheet ennen tallentamista");
+      return;
+    }
     if (selectedCompany) {
       updateMutation.mutate({ id: selectedCompany.id, data: formData });
     } else {
@@ -221,22 +274,34 @@ export default function Partners() {
                     <Input
                       id="name"
                       value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
+                      onChange={(e) => {
+                        setFormData({ ...formData, name: e.target.value });
+                        checkDuplicateName(e.target.value);
+                      }}
+                      onBlur={() => checkDuplicateName(formData.name)}
+                      className={nameError ? "border-destructive" : ""}
                       required
                     />
+                    {nameError && (
+                      <p className="text-sm text-destructive mt-1">{nameError}</p>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="business_id">Y-tunnus</Label>
                     <Input
                       id="business_id"
                       value={formData.business_id}
-                      onChange={(e) =>
-                        setFormData({ ...formData, business_id: e.target.value })
-                      }
+                      onChange={(e) => {
+                        setFormData({ ...formData, business_id: e.target.value });
+                        checkDuplicateBusinessId(e.target.value);
+                      }}
+                      onBlur={() => checkDuplicateBusinessId(formData.business_id)}
+                      className={businessIdError ? "border-destructive" : ""}
                       placeholder="1234567-8"
                     />
+                    {businessIdError && (
+                      <p className="text-sm text-destructive mt-1">{businessIdError}</p>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -421,21 +486,33 @@ export default function Partners() {
                   <Input
                     id="edit-name"
                     value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      checkDuplicateName(e.target.value);
+                    }}
+                    onBlur={() => checkDuplicateName(formData.name)}
+                    className={nameError ? "border-destructive" : ""}
                     required
                   />
+                  {nameError && (
+                    <p className="text-sm text-destructive mt-1">{nameError}</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="edit-business_id">Y-tunnus</Label>
                   <Input
                     id="edit-business_id"
                     value={formData.business_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, business_id: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setFormData({ ...formData, business_id: e.target.value });
+                      checkDuplicateBusinessId(e.target.value);
+                    }}
+                    onBlur={() => checkDuplicateBusinessId(formData.business_id)}
+                    className={businessIdError ? "border-destructive" : ""}
                   />
+                  {businessIdError && (
+                    <p className="text-sm text-destructive mt-1">{businessIdError}</p>
+                  )}
                 </div>
               </div>
               <div>
