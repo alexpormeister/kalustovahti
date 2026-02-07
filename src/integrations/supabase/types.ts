@@ -142,6 +142,78 @@ export type Database = {
           },
         ]
       }
+      company_documents: {
+        Row: {
+          company_id: string
+          created_at: string
+          document_type_id: string
+          file_name: string
+          file_path: string
+          file_type: string
+          id: string
+          notes: string | null
+          signature_method: string | null
+          signed_at: string | null
+          signed_by: string | null
+          status: string
+          updated_at: string
+          uploaded_by: string | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          document_type_id: string
+          file_name: string
+          file_path: string
+          file_type?: string
+          id?: string
+          notes?: string | null
+          signature_method?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          document_type_id?: string
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          notes?: string | null
+          signature_method?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          status?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_documents_document_type_id_fkey"
+            columns: ["document_type_id"]
+            isOneToOne: false
+            referencedRelation: "document_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_members: {
         Row: {
           company_id: string
@@ -170,6 +242,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      document_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_required: boolean
+          name: string
+          validity_period_months: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          name: string
+          validity_period_months?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_required?: boolean
+          name?: string
+          validity_period_months?: number | null
+        }
+        Relationships: []
       }
       drivers: {
         Row: {

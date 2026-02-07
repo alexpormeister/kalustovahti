@@ -10,6 +10,7 @@ import {
   Smartphone,
   ClipboardCheck,
   ShieldCheck,
+  FileCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions, PageKey } from "@/hooks/usePermissions";
@@ -24,6 +25,7 @@ interface NavigationItem {
 const navigation: NavigationItem[] = [
   { name: "Hallintapaneeli", href: "/dashboard", icon: LayoutDashboard, pageKey: "dashboard" },
   { name: "Autoilijat", href: "/autoilijat", icon: Building2, pageKey: "autoilijat" },
+  { name: "Dokumentit", href: "/dokumentit", icon: FileCheck, pageKey: "autoilijat" },
   { name: "Kalustolista", href: "/kalusto", icon: Car, pageKey: "kalusto" },
   { name: "Laitevarasto", href: "/laitteet", icon: Smartphone, pageKey: "laitteet" },
   { name: "Kuljettajat", href: "/kuljettajat", icon: Users, pageKey: "kuljettajat" },

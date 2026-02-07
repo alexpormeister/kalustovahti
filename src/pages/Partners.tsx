@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building2, Plus, Search, FileText, History } from "lucide-react";
+import { Building2, Plus, Search, FileText, History, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { usePagination } from "@/hooks/usePagination";
@@ -63,6 +64,7 @@ const contractStatusColors: Record<ContractStatus, string> = {
 };
 
 export default function Partners() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -443,7 +445,15 @@ export default function Partners() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/autoilijat/${company.id}`)}
+                              title="Avaa profiili"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
