@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Partners from "./pages/Partners";
+import CompanyProfile from "./pages/CompanyProfile";
+import DocumentChecklist from "./pages/DocumentChecklist";
 import Fleet from "./pages/Fleet";
 import Hardware from "./pages/Hardware";
 import Drivers from "./pages/Drivers";
@@ -30,6 +32,8 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/autoilijat" element={<Partners />} />
+          <Route path="/autoilijat/:id" element={<CompanyProfile />} />
+          <Route path="/dokumentit" element={<DocumentChecklist />} />
           <Route path="/kalusto" element={<Fleet />} />
           <Route path="/laitteet" element={<Hardware />} />
           <Route path="/kuljettajat" element={<Drivers />} />
