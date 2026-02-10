@@ -83,7 +83,7 @@ export default function Auth() {
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary mb-4">
             <Car className="h-8 w-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-black">Lähitaksi</h1>
+          <h1 className="text-2xl font-bold text-black">Kalustovahti</h1>
           <p className="text-muted-foreground">Kumppaninhallintajärjestelmä</p>
         </div>
 
@@ -101,7 +101,7 @@ export default function Auth() {
                   <Input
                     id="login-email"
                     type="email"
-                    placeholder="nimi@lahitaksi.fi"
+                    placeholder="nimi@sahkoposti.fi"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
