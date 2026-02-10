@@ -416,14 +416,14 @@ export default function Drivers() {
                 <div className="space-y-2">
                   <Label>Yritys</Label>
                   <Select
-                    value={form.company_id}
-                    onValueChange={(value) => setForm({ ...form, company_id: value })}
+                    value={form.company_id || "none"}
+                    onValueChange={(value) => setForm({ ...form, company_id: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Valitse yritys" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Ei yritystä</SelectItem>
+                      <SelectItem value="none">Ei yritystä</SelectItem>
                       {companies.map((company) => (
                         <SelectItem key={company.id} value={company.id}>
                           {company.name}

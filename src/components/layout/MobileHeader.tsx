@@ -22,7 +22,7 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
         </div>
         <div className="flex flex-col">
           <span className="text-sm font-semibold text-sidebar-primary">
-            Lähitaksi
+            Kalustovahti
           </span>
           <span className="text-xs text-sidebar-foreground/60">
             Kumppanihallinta

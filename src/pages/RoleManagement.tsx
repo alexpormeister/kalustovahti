@@ -58,6 +58,7 @@ interface PagePermission {
 const pageLabels: Record<string, string> = {
   dashboard: "Hallintapaneeli",
   autoilijat: "Autoilijat",
+  dokumentit: "Dokumentit",
   kalusto: "Kalustolista",
   laitteet: "Laitevarasto",
   kuljettajat: "Kuljettajat",

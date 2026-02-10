@@ -11,7 +11,7 @@
 
 @layer base {
   :root {
-    /* Lähitaksi Yellow Brand - #FFDC29 = 51 100% 58% */
+    /* Kalustovahti Yellow Brand - #FFDC29 = 51 100% 58% */
     --background: 48 30% 97%;
     --foreground: 220 20% 10%;
 
@@ -21,7 +21,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 10%;
 
-    /* Lähitaksi Yellow as primary */
+    /* Kalustovahti Yellow as primary */
     --primary: 51 100% 58%;
     --primary-foreground: 0 0% 0%;
 
@@ -31,7 +31,7 @@
     --muted: 48 15% 94%;
     --muted-foreground: 220 10% 45%;
 
-    /* Lähitaksi Yellow as accent */
+    /* Kalustovahti Yellow as accent */
     --accent: 51 100% 58%;
     --accent-foreground: 0 0% 0%;
 
@@ -52,7 +52,7 @@
     --status-removed: 0 72% 51%;
     --status-removed-foreground: 0 0% 100%;
 
-    /* Sidebar - Dark with Lähitaksi Yellow accents */
+    /* Sidebar - Dark with Kalustovahti Yellow accents */
     --sidebar-background: 220 25% 12%;
     --sidebar-foreground: 48 30% 90%;
     --sidebar-primary: 51 100% 58%;
@@ -80,7 +80,7 @@
     --popover: 220 25% 12%;
     --popover-foreground: 48 30% 95%;
 
-    /* Lähitaksi Yellow as primary */
+    /* Kalustovahti Yellow as primary */
     --primary: 51 100% 58%;
     --primary-foreground: 0 0% 0%;
 
@@ -90,7 +90,7 @@
     --muted: 220 20% 18%;
     --muted-foreground: 48 15% 60%;
 
-    /* Lähitaksi Yellow as accent */
+    /* Kalustovahti Yellow as accent */
     --accent: 51 100% 58%;
     --accent-foreground: 0 0% 0%;
 

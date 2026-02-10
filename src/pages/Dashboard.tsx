@@ -195,31 +195,27 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Quick Actions */}
+            {/* Recent Activity placeholder */}
             <Card className="glass-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-primary" />
-                  Pikatoiminnot
+                  Yhteenveto
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/autoilijat")}>
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Lisää autoilija
-                </Button>
-                <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/kalusto")}>
-                  <Car className="h-4 w-4 mr-2" />
-                  Lisää ajoneuvo
-                </Button>
-                <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/laitteet")}>
-                  <Smartphone className="h-4 w-4 mr-2" />
-                  Lisää laite
-                </Button>
-                <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/varustelu")}>
-                  <AlertTriangle className="h-4 w-4 mr-2" />
-                  Hallitse varustelua
-                </Button>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Laitteet</span>
+                  <span className="text-sm font-medium">{hardwareCount} kpl</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Sopimukset</span>
+                  <span className="text-sm font-medium">{activeContracts} aktiivista</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Kuljettajat</span>
+                  <span className="text-sm font-medium">{driversCount} aktiivista</span>
+                </div>
               </CardContent>
             </Card>
           </div>
