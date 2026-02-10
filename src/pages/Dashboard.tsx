@@ -5,15 +5,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Car,
-  Users,
-  Building2,
-  Smartphone,
-  FileCheck,
-  AlertTriangle,
-  TrendingUp,
-} from "lucide-react";
+import { Car, Users, Building2, Smartphone, FileCheck, AlertTriangle, TrendingUp } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { ProtectedPage } from "@/components/auth/ProtectedPage";
@@ -23,13 +15,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!session) {
-          navigate("/auth");
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
       }
-    );
+    });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
@@ -46,9 +38,7 @@ export default function Dashboard() {
   const { data: vehiclesData = [] } = useQuery({
     queryKey: ["dashboard-vehicles"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vehicles")
-        .select("id, status");
+      const { data, error } = await supabase.from("vehicles").select("id, status");
       if (error) throw error;
       return data || [];
     },
@@ -58,10 +48,7 @@ export default function Dashboard() {
   const { data: companiesData = [] } = useQuery({
     queryKey: ["dashboard-companies"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("companies")
-        .select("id, name, contract_status")
-        .order("name");
+      const { data, error } = await supabase.from("companies").select("id, name, contract_status").order("name");
       if (error) throw error;
       return data || [];
     },
@@ -84,9 +71,7 @@ export default function Dashboard() {
   const { data: hardwareCount = 0 } = useQuery({
     queryKey: ["dashboard-hardware-count"],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("hardware_devices")
-        .select("*", { count: "exact", head: true });
+      const { count, error } = await supabase.from("hardware_devices").select("*", { count: "exact", head: true });
       if (error) throw error;
       return count || 0;
     },
@@ -111,12 +96,8 @@ export default function Dashboard() {
           {/* Header */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">
-                Hallintapaneeli
-              </h1>
-              <p className="text-muted-foreground mt-1">
-                Tervetuloa Lähitaksi-kumppaninhallintaan
-              </p>
+              <h1 className="text-3xl font-bold text-foreground">Hallintapaneeli</h1>
+              <p className="text-muted-foreground mt-1">Tervetuloa Kalustovahdin-kumppaninhallintaan</p>
             </div>
           </div>
 
@@ -134,11 +115,7 @@ export default function Dashboard() {
               icon={<Car className="h-6 w-6 text-primary" />}
               description={`${activeVehicles} aktiivista`}
             />
-            <StatCard
-              title="Kuljettajia"
-              value={driversCount}
-              icon={<Users className="h-6 w-6 text-primary" />}
-            />
+            <StatCard title="Kuljettajia" value={driversCount} icon={<Users className="h-6 w-6 text-primary" />} />
             <StatCard
               title="Laitteita"
               value={hardwareCount}
@@ -163,38 +140,25 @@ export default function Dashboard() {
                 ) : (
                   <div className="space-y-2">
                     {companiesData.slice(0, 5).map((company) => (
-                      <div
-                        key={company.id}
-                        className="flex items-center justify-between py-1"
-                      >
+                      <div key={company.id} className="flex items-center justify-between py-1">
                         <span className="text-sm font-medium">{company.name}</span>
                         <Badge
-                          variant={
-                            company.contract_status === "active"
-                              ? "default"
-                              : "secondary"
-                          }
+                          variant={company.contract_status === "active" ? "default" : "secondary"}
                           className={
-                            company.contract_status === "active"
-                              ? "bg-status-active text-status-active-foreground"
-                              : ""
+                            company.contract_status === "active" ? "bg-status-active text-status-active-foreground" : ""
                           }
                         >
                           {company.contract_status === "active"
                             ? "Aktiivinen"
                             : company.contract_status === "pending"
-                            ? "Odottaa"
-                            : company.contract_status || "—"}
+                              ? "Odottaa"
+                              : company.contract_status || "—"}
                         </Badge>
                       </div>
                     ))}
                   </div>
                 )}
-                <Button
-                  variant="ghost"
-                  className="w-full mt-4"
-                  onClick={() => navigate("/autoilijat")}
-                >
+                <Button variant="ghost" className="w-full mt-4" onClick={() => navigate("/autoilijat")}>
                   Näytä kaikki
                 </Button>
               </CardContent>
@@ -217,25 +181,15 @@ export default function Dashboard() {
                         <div
                           className="h-full bg-status-active rounded-full"
                           style={{
-                            width: `${
-                              vehiclesData.length > 0
-                                ? (activeVehicles / vehiclesData.length) * 100
-                                : 0
-                            }%`,
+                            width: `${vehiclesData.length > 0 ? (activeVehicles / vehiclesData.length) * 100 : 0}%`,
                           }}
                         />
                       </div>
-                      <span className="text-sm font-medium w-8 text-right">
-                        {activeVehicles}
-                      </span>
+                      <span className="text-sm font-medium w-8 text-right">{activeVehicles}</span>
                     </div>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  className="w-full mt-4"
-                  onClick={() => navigate("/kalusto")}
-                >
+                <Button variant="ghost" className="w-full mt-4" onClick={() => navigate("/kalusto")}>
                   Kalustolista
                 </Button>
               </CardContent>
@@ -250,35 +204,19 @@ export default function Dashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => navigate("/autoilijat")}
-                >
+                <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/autoilijat")}>
                   <Building2 className="h-4 w-4 mr-2" />
                   Lisää autoilija
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => navigate("/kalusto")}
-                >
+                <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/kalusto")}>
                   <Car className="h-4 w-4 mr-2" />
                   Lisää ajoneuvo
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => navigate("/laitteet")}
-                >
+                <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/laitteet")}>
                   <Smartphone className="h-4 w-4 mr-2" />
                   Lisää laite
                 </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => navigate("/varustelu")}
-                >
+                <Button variant="outline" className="w-full justify-start" onClick={() => navigate("/varustelu")}>
                   <AlertTriangle className="h-4 w-4 mr-2" />
                   Hallitse varustelua
                 </Button>

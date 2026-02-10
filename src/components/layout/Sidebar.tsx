@@ -58,10 +58,12 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
   };
 
   return (
-    <aside className={cn(
-      "bg-sidebar border-r border-sidebar-border",
-      isMobile ? "h-full w-full" : "fixed left-0 top-0 z-40 h-screen w-64"
-    )}>
+    <aside
+      className={cn(
+        "bg-sidebar border-r border-sidebar-border",
+        isMobile ? "h-full w-full" : "fixed left-0 top-0 z-40 h-screen w-64",
+      )}
+    >
       <div className="flex h-full flex-col">
         {/* Logo - only show on desktop */}
         {!isMobile && (
@@ -70,12 +72,8 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
               <Car className="h-5 w-5 text-sidebar-primary-foreground" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-sidebar-primary">
-                Lähitaksi
-              </span>
-              <span className="text-xs text-sidebar-foreground/60">
-                Kumppanihallinta
-              </span>
+              <span className="text-sm font-semibold text-sidebar-primary">Kalustovahti</span>
+              <span className="text-xs text-sidebar-foreground/60">Kumppanihallinta</span>
             </div>
           </div>
         )}
@@ -89,26 +87,20 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
                 key={item.name}
                 to={item.href}
                 onClick={handleNavClick}
-                className={cn(
-                  "sidebar-nav-item",
-                  isActive && "sidebar-nav-item-active"
-                )}
+                className={cn("sidebar-nav-item", isActive && "sidebar-nav-item-active")}
               >
                 <item.icon className="h-5 w-5" />
                 <span className="font-medium">{item.name}</span>
               </Link>
             );
           })}
-          
+
           {/* Role Management - Only for system admins */}
           {isSystemAdmin && (
             <Link
               to="/roolit"
               onClick={handleNavClick}
-              className={cn(
-                "sidebar-nav-item",
-                location.pathname === "/roolit" && "sidebar-nav-item-active"
-              )}
+              className={cn("sidebar-nav-item", location.pathname === "/roolit" && "sidebar-nav-item-active")}
             >
               <ShieldCheck className="h-5 w-5" />
               <span className="font-medium">Roolien hallinta</span>
