@@ -51,7 +51,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fi } from "date-fns/locale";
 
-type AppRole = "system_admin" | "contract_manager" | "hardware_ops" | "support";
+type AppRole = string;
 
 interface UserProfile {
   id: string;
@@ -73,21 +73,21 @@ interface AuditLog {
   created_at: string;
 }
 
-const roleLabels: Record<AppRole, string> = {
+const defaultRoleLabels: Record<string, string> = {
   system_admin: "Pääkäyttäjä (IT)",
   contract_manager: "Sopimushallinta",
   hardware_ops: "Laitehallinta",
   support: "Asiakaspalvelu",
 };
 
-const roleDescriptions: Record<AppRole, string> = {
+const defaultRoleDescriptions: Record<string, string> = {
   system_admin: "Täydet oikeudet kaikkeen",
   contract_manager: "Yritys- ja autotietojen muokkaus",
   hardware_ops: "Laitteiden hallinta, sopimukset vain luku",
   support: "Vain lukuoikeus kaikkeen",
 };
 
-const roleColors: Record<AppRole, string> = {
+const defaultRoleColors: Record<string, string> = {
   system_admin: "bg-destructive text-destructive-foreground",
   contract_manager: "bg-primary text-primary-foreground",
   hardware_ops: "bg-status-maintenance text-status-maintenance-foreground",
@@ -125,6 +125,36 @@ export default function UserManagement() {
     password: "",
     full_name: "",
     role: "support" as AppRole,
+  });
+
+  // Fetch available roles from the roles table
+  const { data: dbRoles = [] } = useQuery({
+    queryKey: ["available-roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("roles")
+        .select("name, display_name")
+        .order("display_name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Build dynamic role labels and colors
+  const roleLabels: Record<string, string> = {};
+  const roleColors: Record<string, string> = {};
+  const roleDescriptions: Record<string, string> = {};
+  
+  dbRoles.forEach((r) => {
+    roleLabels[r.name] = r.display_name;
+    roleColors[r.name] = defaultRoleColors[r.name] || "bg-secondary text-secondary-foreground";
+    roleDescriptions[r.name] = defaultRoleDescriptions[r.name] || r.display_name;
+  });
+  // Ensure defaults exist
+  Object.entries(defaultRoleLabels).forEach(([key, val]) => {
+    if (!roleLabels[key]) roleLabels[key] = val;
+    if (!roleColors[key]) roleColors[key] = defaultRoleColors[key] || "bg-secondary text-secondary-foreground";
+    if (!roleDescriptions[key]) roleDescriptions[key] = defaultRoleDescriptions[key] || val;
   });
 
   // Check if current user is admin
@@ -216,7 +246,7 @@ export default function UserManagement() {
 
       const { error: roleError } = await supabase
         .from("user_roles")
-        .update({ role: newRole })
+        .update({ role: newRole } as any)
         .eq("user_id", userId);
       
       if (roleError) throw roleError;
@@ -250,13 +280,13 @@ export default function UserManagement() {
 
       const { error: roleError } = await supabase
         .from("user_roles")
-        .update({ role: data.role })
+        .update({ role: data.role } as any)
         .eq("user_id", authData.user.id);
       
       if (roleError) {
         const { error: insertError } = await supabase
           .from("user_roles")
-          .insert({ user_id: authData.user.id, role: data.role });
+          .insert({ user_id: authData.user.id, role: data.role } as any);
         if (insertError) throw insertError;
       }
 
@@ -396,7 +426,7 @@ export default function UserManagement() {
                     type="email"
                     value={newUserData.email}
                     onChange={(e) => setNewUserData({ ...newUserData, email: e.target.value })}
-                    placeholder="nimi@lahitaksi.fi"
+                    placeholder="nimi@kalustovahti.fi"
                     required
                   />
                 </div>
@@ -431,10 +461,9 @@ export default function UserManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="system_admin">Pääkäyttäjä (IT)</SelectItem>
-                      <SelectItem value="contract_manager">Sopimushallinta</SelectItem>
-                      <SelectItem value="hardware_ops">Laitehallinta</SelectItem>
-                      <SelectItem value="support">Asiakaspalvelu</SelectItem>
+                      {Object.entries(roleLabels).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -656,12 +685,11 @@ export default function UserManagement() {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="system_admin">Pääkäyttäjä (IT)</SelectItem>
-                    <SelectItem value="contract_manager">Sopimushallinta</SelectItem>
-                    <SelectItem value="hardware_ops">Laitehallinta</SelectItem>
-                    <SelectItem value="support">Asiakaspalvelu</SelectItem>
-                  </SelectContent>
+                    <SelectContent>
+                      {Object.entries(roleLabels).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
                 </Select>
               </div>
               <div className="flex justify-end gap-2">

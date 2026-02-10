@@ -18,7 +18,7 @@ export function usePagination<T>(
   data: T[],
   options: UsePaginationOptions = {}
 ): UsePaginationResult<T> {
-  const { pageSize = 20 } = options;
+  const { pageSize = 10 } = options;
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = useMemo(() => Math.ceil(data.length / pageSize), [data.length, pageSize]);

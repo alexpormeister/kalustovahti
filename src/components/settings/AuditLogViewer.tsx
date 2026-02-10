@@ -153,7 +153,7 @@ export function AuditLogViewer({ isAdmin }: { isAdmin: boolean }) {
   const [page, setPage] = useState(0);
   const [tableFilter, setTableFilter] = useState<string>("all");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const pageSize = 20;
+  const pageSize = 10;
 
   const { data, isLoading } = useQuery({
     queryKey: ["audit-logs", page, tableFilter],

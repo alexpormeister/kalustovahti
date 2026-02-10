@@ -8,11 +8,6 @@ import { Settings as SettingsIcon, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface SystemSettingsData {
-  companyName: string;
-  companyBusinessId: string;
-  companyAddress: string;
-  companyEmail: string;
-  companyPhone: string;
   invoicePrefix: string;
   invoiceFooter: string;
 }
@@ -25,11 +20,6 @@ export function SystemSettings({ isAdmin }: SystemSettingsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState<SystemSettingsData>({
-    companyName: "",
-    companyBusinessId: "",
-    companyAddress: "",
-    companyEmail: "",
-    companyPhone: "",
     invoicePrefix: "INV-",
     invoiceFooter: "",
   });
@@ -87,7 +77,7 @@ export function SystemSettings({ isAdmin }: SystemSettingsProps) {
             </div>
             <div>
               <CardTitle className="text-lg">Järjestelmä</CardTitle>
-              <CardDescription>Yrityksen tiedot ja laskutusasetukset</CardDescription>
+              <CardDescription>Laskutusasetukset</CardDescription>
             </div>
           </div>
           {!isEditing && (
@@ -100,58 +90,6 @@ export function SystemSettings({ isAdmin }: SystemSettingsProps) {
       <CardContent>
         {isEditing ? (
           <div className="space-y-6">
-            <div>
-              <h4 className="font-medium mb-3">Yrityksen tiedot</h4>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="company-name">Yrityksen nimi</Label>
-                  <Input
-                    id="company-name"
-                    value={settings.companyName}
-                    onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
-                    placeholder="Lähitaksi Oy"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="company-bid">Y-tunnus</Label>
-                  <Input
-                    id="company-bid"
-                    value={settings.companyBusinessId}
-                    onChange={(e) => setSettings({ ...settings, companyBusinessId: e.target.value })}
-                    placeholder="1234567-8"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label htmlFor="company-address">Osoite</Label>
-                  <Input
-                    id="company-address"
-                    value={settings.companyAddress}
-                    onChange={(e) => setSettings({ ...settings, companyAddress: e.target.value })}
-                    placeholder="Esimerkkikatu 1, 00100 Helsinki"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="company-email">Sähköposti</Label>
-                  <Input
-                    id="company-email"
-                    type="email"
-                    value={settings.companyEmail}
-                    onChange={(e) => setSettings({ ...settings, companyEmail: e.target.value })}
-                    placeholder="info@lahitaksi.fi"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="company-phone">Puhelin</Label>
-                  <Input
-                    id="company-phone"
-                    value={settings.companyPhone}
-                    onChange={(e) => setSettings({ ...settings, companyPhone: e.target.value })}
-                    placeholder="+358 9 123 4567"
-                  />
-                </div>
-              </div>
-            </div>
-
             <div>
               <h4 className="font-medium mb-3">Laskutusasetukset</h4>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -193,31 +131,6 @@ export function SystemSettings({ isAdmin }: SystemSettingsProps) {
           </div>
         ) : (
           <div className="space-y-6">
-            <div>
-              <h4 className="font-medium mb-3">Yrityksen tiedot</h4>
-              <div className="grid gap-4 sm:grid-cols-2 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Nimi</p>
-                  <p className="font-medium">{settings.companyName || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Y-tunnus</p>
-                  <p className="font-medium">{settings.companyBusinessId || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Osoite</p>
-                  <p className="font-medium">{settings.companyAddress || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Sähköposti</p>
-                  <p className="font-medium">{settings.companyEmail || "—"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Puhelin</p>
-                  <p className="font-medium">{settings.companyPhone || "—"}</p>
-                </div>
-              </div>
-            </div>
             <div>
               <h4 className="font-medium mb-3">Laskutusasetukset</h4>
               <div className="grid gap-4 sm:grid-cols-2 text-sm">

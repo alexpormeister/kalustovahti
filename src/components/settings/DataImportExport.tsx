@@ -82,6 +82,7 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportPreviewData | null>(null);
+  const [importFileContent, setImportFileContent] = useState<string | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; failed: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -200,6 +201,7 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
       });
 
       setImportPreview({ headers, rows, mappings });
+      setImportFileContent(text);
       setImportDialogOpen(true);
     } catch (error) {
       console.error("File parse error:", error);
@@ -219,14 +221,12 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
     setImportResults(null);
 
     try {
-      const file = fileInputRef.current?.files?.[0];
-      if (!file) {
-        // Re-read the file if needed (user might have selected again)
-        toast.error("Valitse tiedosto uudelleen");
+      if (!importFileContent) {
+        toast.error("Tiedoston sisältö puuttuu. Valitse tiedosto uudelleen.");
         return;
       }
 
-      const text = await file.text();
+      const text = importFileContent;
       const lines = text.split(/\r?\n/).filter(line => line.trim());
 
       const parseCSVLine = (line: string): string[] => {

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 export type PageKey = 
   | "dashboard"
   | "autoilijat"
+  | "dokumentit"
   | "kalusto"
   | "laitteet"
   | "kuljettajat"
@@ -28,6 +29,7 @@ const defaultPermission: PagePermission = { can_view: false, can_edit: false };
 const allPages: PageKey[] = [
   "dashboard",
   "autoilijat",
+  "dokumentit",
   "kalusto",
   "laitteet",
   "kuljettajat",
