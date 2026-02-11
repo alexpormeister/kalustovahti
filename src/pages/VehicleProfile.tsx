@@ -8,11 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Car, History, Tag, User, Building2, Smartphone, CreditCard, Pencil, Save, X } from "lucide-react";
+import { ArrowLeft, Car, History, Tag, User, Building2, Smartphone, CreditCard, Pencil, Save, X, Layers } from "lucide-react";
 import { format } from "date-fns";
 import { fi } from "date-fns/locale";
 import { toast } from "sonner";
@@ -29,11 +30,24 @@ export default function VehicleProfile() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vehicles")
-        .select("*, company:companies(name), driver:drivers!vehicles_assigned_driver_id_fkey(full_name), fleet:fleets(name)")
+        .select("*, company:companies(name), driver:drivers!vehicles_assigned_driver_id_fkey(full_name)")
         .eq("id", id)
         .single();
       if (error) throw error;
       return data;
+    },
+    enabled: !!id,
+  });
+
+  const { data: vehicleFleets = [] } = useQuery({
+    queryKey: ["vehicle-fleets", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vehicle_fleet_links")
+        .select("fleet:fleets(id, name)")
+        .eq("vehicle_id", id);
+      if (error) throw error;
+      return data.map((l: any) => l.fleet);
     },
     enabled: !!id,
   });
@@ -51,15 +65,6 @@ export default function VehicleProfile() {
     queryKey: ["fleets"],
     queryFn: async () => {
       const { data, error } = await supabase.from("fleets").select("id, name").order("name");
-      if (error) throw error;
-      return data;
-    },
-  });
-
-  const { data: municipalities = [] } = useQuery({
-    queryKey: ["municipalities"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("municipalities").select("name").order("name");
       if (error) throw error;
       return data;
     },
@@ -110,15 +115,25 @@ export default function VehicleProfile() {
         model: data.model,
         status: data.status,
         company_id: data.company_id || null,
-        fleet_id: data.fleet_id || null,
         payment_terminal_id: data.payment_terminal_id || null,
         meter_serial_number: data.meter_serial_number || null,
         city: data.city || null,
       }).eq("id", id);
       if (error) throw error;
+
+      // Update fleet links
+      await supabase.from("vehicle_fleet_links").delete().eq("vehicle_id", id);
+      if (data.selected_fleets?.length > 0) {
+        const links = data.selected_fleets.map((fleetId: string) => ({
+          vehicle_id: id,
+          fleet_id: fleetId,
+        }));
+        await supabase.from("vehicle_fleet_links").insert(links);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicle", id] });
+      queryClient.invalidateQueries({ queryKey: ["vehicle-fleets", id] });
       toast.success("Ajoneuvo päivitetty");
       setIsEditing(false);
     },
@@ -134,10 +149,10 @@ export default function VehicleProfile() {
       model: vehicle.model,
       status: vehicle.status,
       company_id: vehicle.company_id || "",
-      fleet_id: vehicle.fleet_id || "",
       payment_terminal_id: vehicle.payment_terminal_id || "",
       meter_serial_number: vehicle.meter_serial_number || "",
       city: (vehicle as any).city || "",
+      selected_fleets: vehicleFleets.map((f: any) => f.id),
     });
     setIsEditing(true);
   };
@@ -215,24 +230,7 @@ export default function VehicleProfile() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div><Label>Fleetti</Label>
-                      <Select value={editForm.fleet_id || "none"} onValueChange={(v) => setEditForm({ ...editForm, fleet_id: v === "none" ? "" : v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Ei fleettiä</SelectItem>
-                          {fleets.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div><Label>Kaupunki</Label>
-                      <Select value={editForm.city || "none"} onValueChange={(v) => setEditForm({ ...editForm, city: v === "none" ? "" : v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Ei kaupunkia</SelectItem>
-                          {municipalities.map((m: any) => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <div><Label>Kaupunki</Label><Input value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} placeholder="Esim. Helsinki" /></div>
                     <div><Label>Tila</Label>
                       <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -244,6 +242,30 @@ export default function VehicleProfile() {
                     </div>
                     <div><Label>Maksupääte-ID</Label><Input value={editForm.payment_terminal_id} onChange={(e) => setEditForm({ ...editForm, payment_terminal_id: e.target.value })} /></div>
                     <div><Label>Mittarin sarjanumero</Label><Input value={editForm.meter_serial_number} onChange={(e) => setEditForm({ ...editForm, meter_serial_number: e.target.value })} /></div>
+                    {fleets.length > 0 && (
+                      <div className="sm:col-span-2">
+                        <Label>Fleetit</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                          {fleets.map((f) => (
+                            <div key={f.id} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`fleet-edit-${f.id}`}
+                                checked={editForm.selected_fleets?.includes(f.id)}
+                                onCheckedChange={(checked) => {
+                                  setEditForm((prev: any) => ({
+                                    ...prev,
+                                    selected_fleets: checked
+                                      ? [...(prev.selected_fleets || []), f.id]
+                                      : (prev.selected_fleets || []).filter((id: string) => id !== f.id),
+                                  }));
+                                }}
+                              />
+                              <label htmlFor={`fleet-edit-${f.id}`} className="text-sm cursor-pointer">{f.name}</label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -252,7 +274,7 @@ export default function VehicleProfile() {
                     <div><p className="text-sm text-muted-foreground">Merkki / Malli</p><p className="font-medium">{vehicle.brand} {vehicle.model}</p></div>
                     <div className="flex items-center gap-3"><Building2 className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Yritys</p><p className="font-medium">{(vehicle as any).company?.name || "—"}</p></div></div>
                     <div className="flex items-center gap-3"><User className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Kuljettaja</p><p className="font-medium">{(vehicle as any).driver?.full_name || "—"}</p></div></div>
-                    <div><p className="text-sm text-muted-foreground">Fleetti</p><p className="font-medium">{(vehicle as any).fleet?.name || "—"}</p></div>
+                    <div className="flex items-center gap-3"><Layers className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Fleetit</p><div className="flex flex-wrap gap-1">{vehicleFleets.length > 0 ? vehicleFleets.map((f: any) => <Badge key={f.id} variant="secondary" className="text-xs">{f.name}</Badge>) : <p className="font-medium">—</p>}</div></div></div>
                     <div><p className="text-sm text-muted-foreground">Kaupunki</p><p className="font-medium">{(vehicle as any).city || "—"}</p></div>
                     <div className="flex items-center gap-3"><CreditCard className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Maksupääte-ID</p><p className="font-medium font-mono">{vehicle.payment_terminal_id || "—"}</p></div></div>
                     <div><p className="text-sm text-muted-foreground">Mittarin sarjanumero</p><p className="font-medium font-mono">{vehicle.meter_serial_number || "—"}</p></div>

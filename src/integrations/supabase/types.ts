@@ -885,6 +885,42 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_fleet_links: {
+        Row: {
+          created_at: string
+          fleet_id: string
+          id: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          fleet_id: string
+          id?: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          fleet_id?: string
+          id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_fleet_links_fleet_id_fkey"
+            columns: ["fleet_id"]
+            isOneToOne: false
+            referencedRelation: "fleets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_fleet_links_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           assigned_driver_id: string | null
@@ -892,7 +928,6 @@ export type Database = {
           city: string | null
           company_id: string | null
           created_at: string
-          fleet_id: string | null
           id: string
           meter_serial_number: string | null
           model: string
@@ -908,7 +943,6 @@ export type Database = {
           city?: string | null
           company_id?: string | null
           created_at?: string
-          fleet_id?: string | null
           id?: string
           meter_serial_number?: string | null
           model: string
@@ -924,7 +958,6 @@ export type Database = {
           city?: string | null
           company_id?: string | null
           created_at?: string
-          fleet_id?: string | null
           id?: string
           meter_serial_number?: string | null
           model?: string
@@ -947,13 +980,6 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vehicles_fleet_id_fkey"
-            columns: ["fleet_id"]
-            isOneToOne: false
-            referencedRelation: "fleets"
             referencedColumns: ["id"]
           },
         ]
