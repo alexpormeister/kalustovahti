@@ -496,21 +496,12 @@ export default function Drivers() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="city">Kaupunki</Label>
-                    <Select
-                      value={form.city || "none"}
-                      onValueChange={(value) => {
-                        const muni = municipalities.find((m: any) => m.name === value);
-                        setForm({ ...form, city: value === "none" ? "" : value, province: muni?.province || form.province });
-                      }}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Valitse kaupunki" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Ei valittu</SelectItem>
-                        {municipalities.map((m: any) => (
-                          <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      id="city"
+                      value={form.city}
+                      onChange={(e) => setForm({ ...form, city: e.target.value })}
+                      placeholder="Esim. Helsinki"
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
