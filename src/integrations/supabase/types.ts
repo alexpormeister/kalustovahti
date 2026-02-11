@@ -518,6 +518,30 @@ export type Database = {
           },
         ]
       }
+      fleets: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hardware_devices: {
         Row: {
           company_id: string | null
@@ -846,6 +870,7 @@ export type Database = {
           brand: string
           company_id: string | null
           created_at: string
+          fleet_id: string | null
           id: string
           meter_serial_number: string | null
           model: string
@@ -860,6 +885,7 @@ export type Database = {
           brand: string
           company_id?: string | null
           created_at?: string
+          fleet_id?: string | null
           id?: string
           meter_serial_number?: string | null
           model: string
@@ -874,6 +900,7 @@ export type Database = {
           brand?: string
           company_id?: string | null
           created_at?: string
+          fleet_id?: string | null
           id?: string
           meter_serial_number?: string | null
           model?: string
@@ -896,6 +923,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_fleet_id_fkey"
+            columns: ["fleet_id"]
+            isOneToOne: false
+            referencedRelation: "fleets"
             referencedColumns: ["id"]
           },
         ]

@@ -8,9 +8,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin, Filter, Car } from "lucide-react";
+import { Filter, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
@@ -59,6 +60,21 @@ interface Vehicle {
   attributes?: { id: string; name: string }[];
 }
 
+// Create custom cluster icon
+const createClusterCustomIcon = (cluster: any) => {
+  const count = cluster.getChildCount();
+  let size = "small";
+  let dimension = 40;
+  if (count >= 10) { size = "medium"; dimension = 50; }
+  if (count >= 50) { size = "large"; dimension = 60; }
+
+  return L.divIcon({
+    html: `<div class="cluster-icon cluster-${size}"><span>${count}</span></div>`,
+    className: "custom-cluster-marker",
+    iconSize: L.point(dimension, dimension),
+  });
+};
+
 export default function DriverMap() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>("active");
@@ -93,7 +109,6 @@ export default function DriverMap() {
     },
   });
 
-  // Fetch all drivers with city info for vehicles without assigned drivers
   const { data: drivers = [] } = useQuery({
     queryKey: ["map-drivers"],
     queryFn: async () => {
@@ -118,8 +133,8 @@ export default function DriverMap() {
     },
   });
 
-  // Group vehicles by city
-  const vehiclesByCity = useMemo(() => {
+  // Create individual markers for each vehicle
+  const vehicleMarkers = useMemo(() => {
     const filtered = vehicles.filter((v) => {
       const matchesStatus = statusFilter === "all" || v.status === statusFilter;
       const matchesAttributes = selectedAttributes.length === 0 ||
@@ -129,37 +144,58 @@ export default function DriverMap() {
       return matchesStatus && matchesAttributes;
     });
 
-    const grouped: Record<string, Vehicle[]> = {};
+    const markers: { vehicle: Vehicle; position: [number, number]; city: string }[] = [];
+
     filtered.forEach((v) => {
       const city = v.driver?.city;
       if (city && cityCoords[city]) {
-        if (!grouped[city]) grouped[city] = [];
-        grouped[city].push(v);
+        // Add slight random offset so markers don't stack exactly
+        const offset = () => (Math.random() - 0.5) * 0.02;
+        markers.push({
+          vehicle: v,
+          position: [cityCoords[city][0] + offset(), cityCoords[city][1] + offset()],
+          city,
+        });
+        return;
       }
-    });
-
-    // Also group by company location from drivers table
-    filtered.forEach((v) => {
-      if (v.driver?.city) return; // already handled
-      const companyDrivers = drivers.filter((d) => d.company_id === v.company_id && d.city);
-      if (companyDrivers.length > 0) {
-        const city = companyDrivers[0].city!;
-        if (cityCoords[city]) {
-          if (!grouped[city]) grouped[city] = [];
-          if (!grouped[city].find((gv) => gv.id === v.id)) {
-            grouped[city].push(v);
+      // Fallback: use company driver's city
+      if (!v.driver?.city) {
+        const companyDrivers = drivers.filter((d) => d.company_id === v.company_id && d.city);
+        if (companyDrivers.length > 0) {
+          const fallbackCity = companyDrivers[0].city!;
+          if (cityCoords[fallbackCity]) {
+            const offset = () => (Math.random() - 0.5) * 0.02;
+            markers.push({
+              vehicle: v,
+              position: [cityCoords[fallbackCity][0] + offset(), cityCoords[fallbackCity][1] + offset()],
+              city: fallbackCity,
+            });
           }
         }
       }
     });
 
-    return grouped;
+    return markers;
   }, [vehicles, drivers, statusFilter, selectedAttributes]);
 
-  const totalShown = Object.values(vehiclesByCity).reduce((sum, arr) => sum + arr.length, 0);
+  const totalShown = vehicleMarkers.length;
 
   return (
     <DashboardLayout>
+      <style>{`
+        .custom-cluster-marker { background: transparent !important; border: none !important; }
+        .cluster-icon {
+          display: flex; align-items: center; justify-content: center;
+          border-radius: 50%; font-weight: 700; color: white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .cluster-icon span { font-size: 14px; }
+        .cluster-small { background: hsl(var(--primary)); width: 40px; height: 40px; }
+        .cluster-medium { background: hsl(var(--primary)); width: 50px; height: 50px; opacity: 0.9; }
+        .cluster-medium span { font-size: 16px; }
+        .cluster-large { background: hsl(var(--destructive)); width: 60px; height: 60px; }
+        .cluster-large span { font-size: 18px; }
+      `}</style>
       <div className="space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -228,33 +264,40 @@ export default function DriverMap() {
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                {Object.entries(vehiclesByCity).map(([city, cityVehicles]) => {
-                  const coords = cityCoords[city];
-                  if (!coords) return null;
-                  return (
-                    <Marker key={city} position={coords}>
-                      <Popup maxWidth={300}>
-                        <div className="space-y-2">
+                <MarkerClusterGroup
+                  chunkedLoading
+                  iconCreateFunction={createClusterCustomIcon}
+                  maxClusterRadius={50}
+                  spiderfyOnMaxZoom
+                  showCoverageOnHover={false}
+                >
+                  {vehicleMarkers.map((m, i) => (
+                    <Marker key={`${m.vehicle.id}-${i}`} position={m.position}>
+                      <Popup>
+                        <div className="space-y-1 min-w-[180px]">
                           <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            <strong>{city}</strong>
-                            <Badge variant="secondary">{cityVehicles.length} autoa</Badge>
+                            <Car className="h-4 w-4" />
+                            <strong>{m.vehicle.vehicle_number}</strong>
                           </div>
-                          <div className="max-h-40 overflow-y-auto space-y-1">
-                            {cityVehicles.map((v) => (
-                              <div key={v.id} className="text-xs border-t pt-1">
-                                <span className="font-medium">{v.vehicle_number}</span> — {v.registration_number}
-                                <br />
-                                {v.brand} {v.model}
-                                {v.company?.name && <span className="text-gray-500"> ({v.company.name})</span>}
-                              </div>
-                            ))}
+                          <div className="text-xs">
+                            <p>{m.vehicle.registration_number} — {m.vehicle.brand} {m.vehicle.model}</p>
+                            {m.vehicle.company?.name && <p className="text-gray-500">{m.vehicle.company.name}</p>}
+                            {m.vehicle.driver?.full_name && <p>Kuljettaja: {m.vehicle.driver.full_name}</p>}
+                            <p className="text-gray-400">{m.city}</p>
                           </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full mt-1 text-xs h-7"
+                            onClick={() => navigate(`/kalusto/${m.vehicle.id}`)}
+                          >
+                            Avaa profiili
+                          </Button>
                         </div>
                       </Popup>
                     </Marker>
-                  );
-                })}
+                  ))}
+                </MarkerClusterGroup>
               </MapContainer>
             </div>
           </CardContent>

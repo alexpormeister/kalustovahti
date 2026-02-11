@@ -50,9 +50,11 @@ interface Vehicle {
   assigned_driver_id: string | null;
   payment_terminal_id: string | null;
   meter_serial_number: string | null;
+  fleet_id: string | null;
   company?: { name: string } | null;
   driver?: { full_name: string | null } | null;
   attributes?: { id: string; name: string }[];
+  fleet?: { name: string } | null;
 }
 
 interface Attribute {
@@ -77,6 +79,7 @@ export default function Fleet() {
     company_id: "",
     payment_terminal_id: "",
     meter_serial_number: "",
+    fleet_id: "",
     selected_attributes: [] as string[],
   });
 
@@ -90,7 +93,8 @@ export default function Fleet() {
         .select(`
           *,
           company:companies(name),
-          driver:drivers!vehicles_assigned_driver_id_fkey(full_name)
+          driver:drivers!vehicles_assigned_driver_id_fkey(full_name),
+          fleet:fleets(name)
         `)
         .order("vehicle_number");
       if (error) throw error;
@@ -136,6 +140,18 @@ export default function Fleet() {
     },
   });
 
+  const { data: fleets = [] } = useQuery({
+    queryKey: ["fleets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fleets")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const vehicleData = {
@@ -147,6 +163,7 @@ export default function Fleet() {
         company_id: data.company_id || null,
         payment_terminal_id: data.payment_terminal_id || null,
         meter_serial_number: data.meter_serial_number || null,
+        fleet_id: data.fleet_id || null,
       };
 
       const { data: newVehicle, error } = await supabase
@@ -193,6 +210,7 @@ export default function Fleet() {
         company_id: data.company_id || null,
         payment_terminal_id: data.payment_terminal_id || null,
         meter_serial_number: data.meter_serial_number || null,
+        fleet_id: data.fleet_id || null,
       };
 
       const { error } = await supabase
@@ -236,6 +254,7 @@ export default function Fleet() {
       company_id: "",
       payment_terminal_id: "",
       meter_serial_number: "",
+      fleet_id: "",
       selected_attributes: [],
     });
   };
@@ -251,6 +270,7 @@ export default function Fleet() {
       company_id: vehicle.company_id || "",
       payment_terminal_id: vehicle.payment_terminal_id || "",
       meter_serial_number: vehicle.meter_serial_number || "",
+      fleet_id: vehicle.fleet_id || "",
       selected_attributes: vehicle.attributes?.map((a) => a.id) || [],
     });
   };
@@ -424,6 +444,31 @@ export default function Fleet() {
         </div>
       </div>
 
+      {/* Fleet */}
+      {fleets.length > 0 && (
+        <div>
+          <Label>Fleetti</Label>
+          <Select
+            value={formData.fleet_id || "none"}
+            onValueChange={(value) =>
+              setFormData({ ...formData, fleet_id: value === "none" ? "" : value })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Valitse fleetti" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Ei fleettiä</SelectItem>
+              {fleets.map((fleet) => (
+                <SelectItem key={fleet.id} value={fleet.id}>
+                  {fleet.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Attributes */}
       {attributes.length > 0 && (
         <div>
@@ -591,10 +636,11 @@ export default function Fleet() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Nro</TableHead>
+                         <TableHead>Nro</TableHead>
                         <TableHead>Rekisteri</TableHead>
                         <TableHead>Merkki/Malli</TableHead>
                         <TableHead>Yritys</TableHead>
+                        <TableHead>Fleetti</TableHead>
                         <TableHead>Varustelu</TableHead>
                         <TableHead>Tila</TableHead>
                         <TableHead></TableHead>
@@ -613,6 +659,7 @@ export default function Fleet() {
                             {vehicle.brand} {vehicle.model}
                           </TableCell>
                           <TableCell>{vehicle.company?.name || "—"}</TableCell>
+                          <TableCell>{vehicle.fleet?.name || "—"}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {vehicle.attributes?.slice(0, 3).map((attr) => (

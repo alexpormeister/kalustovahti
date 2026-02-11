@@ -17,9 +17,11 @@ import VehicleProfile from "./pages/VehicleProfile";
 import DriverMap from "./pages/DriverMap";
 import Equipment from "./pages/Equipment";
 import Settings from "./pages/Settings";
+import Maintenance from "./pages/Maintenance";
 import UserManagement from "./pages/UserManagement";
 import QualityControl from "./pages/QualityControl";
 import RoleManagement from "./pages/RoleManagement";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,8 +48,10 @@ const App = () => (
           <Route path="/varustelu" element={<Equipment />} />
           <Route path="/laadunvalvonta" element={<QualityControl />} />
           <Route path="/asetukset" element={<Settings />} />
+          <Route path="/yllapito" element={<Maintenance />} />
           <Route path="/kayttajat" element={<UserManagement />} />
           <Route path="/roolit" element={<RoleManagement />} />
+          <Route path="/raportit" element={<Reports />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
