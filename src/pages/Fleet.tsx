@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Car, Plus, Search, Filter, X, ExternalLink } from "lucide-react";
+import { Car, Plus, Search, Filter, X, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -49,6 +49,10 @@ export default function Fleet() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [attributeFilters, setAttributeFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [sortField, setSortField] = useState<string>("vehicle_number");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const [fleetFilter, setFleetFilter] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [formData, setFormData] = useState({
@@ -266,12 +270,31 @@ export default function Fleet() {
       vehicle.vehicle_number.toLowerCase().includes(query) ||
       vehicle.brand.toLowerCase().includes(query) ||
       vehicle.model.toLowerCase().includes(query) ||
-      vehicle.driver?.full_name?.toLowerCase().includes(query);
+      vehicle.company?.name?.toLowerCase().includes(query) ||
+      vehicle.city?.toLowerCase().includes(query) ||
+      vehicle.payment_terminal_id?.toLowerCase().includes(query) ||
+      vehicle.meter_serial_number?.toLowerCase().includes(query) ||
+      vehicle.fleets?.some(f => f.name.toLowerCase().includes(query)) ||
+      vehicle.attributes?.some(a => a.name.toLowerCase().includes(query));
     const matchesStatus = statusFilter === "all" || vehicle.status === statusFilter;
+    const matchesCompany = companyFilter === "all" || vehicle.company_id === companyFilter;
+    const matchesFleet = fleetFilter === "all" || vehicle.fleets?.some(f => f.id === fleetFilter);
     const matchesAttributes =
       attributeFilters.length === 0 ||
       attributeFilters.every((filterId) => vehicle.attributes?.some((attr) => attr.id === filterId));
-    return matchesSearch && matchesStatus && matchesAttributes;
+    return matchesSearch && matchesStatus && matchesCompany && matchesFleet && matchesAttributes;
+  }).sort((a, b) => {
+    let aVal = "";
+    let bVal = "";
+    switch (sortField) {
+      case "vehicle_number": aVal = a.vehicle_number; bVal = b.vehicle_number; break;
+      case "registration_number": aVal = a.registration_number; bVal = b.registration_number; break;
+      case "brand": aVal = `${a.brand} ${a.model}`; bVal = `${b.brand} ${b.model}`; break;
+      case "company": aVal = a.company?.name || ""; bVal = b.company?.name || ""; break;
+      case "status": aVal = a.status; bVal = b.status; break;
+    }
+    const cmp = aVal.localeCompare(bVal, "fi");
+    return sortDir === "asc" ? cmp : -cmp;
   });
 
   const {
@@ -494,17 +517,17 @@ export default function Fleet() {
 
         {/* Search and Filters */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Hae rekisterinumerolla, autonumerolla, kuljettajalla..."
+              placeholder="Hae: rekisteri, nro, merkki, yritys, fleet, varuste, kaupunki..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-36">
               <SelectValue placeholder="Tila" />
             </SelectTrigger>
             <SelectContent>
@@ -513,6 +536,26 @@ export default function Fleet() {
               <SelectItem value="removed">Poistetut</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={companyFilter} onValueChange={setCompanyFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Yritys" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Kaikki yritykset</SelectItem>
+              {companies.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {fleets.length > 0 && (
+            <Select value={fleetFilter} onValueChange={setFleetFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Fleet" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Kaikki fleetit</SelectItem>
+                {fleets.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
           <Button
             variant={showFilters ? "default" : "outline"}
             size="icon"
@@ -569,13 +612,52 @@ export default function Fleet() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Nro</TableHead>
-                        <TableHead>Rekisteri</TableHead>
-                        <TableHead>Merkki/Malli</TableHead>
-                        <TableHead>Yritys</TableHead>
+                        {[
+                          { key: "vehicle_number", label: "Nro" },
+                          { key: "registration_number", label: "Rekisteri" },
+                          { key: "brand", label: "Merkki/Malli" },
+                          { key: "company", label: "Yritys" },
+                        ].map(({ key, label }) => (
+                          <TableHead
+                            key={key}
+                            className="cursor-pointer select-none hover:text-foreground"
+                            onClick={() => {
+                              if (sortField === key) {
+                                setSortDir(sortDir === "asc" ? "desc" : "asc");
+                              } else {
+                                setSortField(key);
+                                setSortDir("asc");
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-1">
+                              {label}
+                              {sortField === key ? (
+                                sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                              ) : (
+                                <ArrowUpDown className="h-3 w-3 opacity-30" />
+                              )}
+                            </div>
+                          </TableHead>
+                        ))}
                         <TableHead>Fleetit</TableHead>
                         <TableHead>Varustelu</TableHead>
-                        <TableHead>Tila</TableHead>
+                        <TableHead
+                          className="cursor-pointer select-none hover:text-foreground"
+                          onClick={() => {
+                            if (sortField === "status") setSortDir(sortDir === "asc" ? "desc" : "asc");
+                            else { setSortField("status"); setSortDir("asc"); }
+                          }}
+                        >
+                          <div className="flex items-center gap-1">
+                            Tila
+                            {sortField === "status" ? (
+                              sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                            ) : (
+                              <ArrowUpDown className="h-3 w-3 opacity-30" />
+                            )}
+                          </div>
+                        </TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>

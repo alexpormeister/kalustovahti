@@ -9,31 +9,42 @@ import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
 import { FleetManager } from "@/components/settings/FleetManager";
 import { CompanyInfoManager } from "@/components/settings/CompanyInfoManager";
 import { MunicipalityManager } from "@/components/settings/MunicipalityManager";
-import { Button } from "@/components/ui/button";
-import { Eye, EyeOff } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Eye, EyeOff, Building2, Layers, Cpu, FileText, MapPin, Database, History } from "lucide-react";
 import { toast } from "sonner";
 
 interface CollapsibleSectionProps {
   title: string;
+  icon: React.ReactNode;
   children: React.ReactNode;
   defaultOpen?: boolean;
 }
 
-function CollapsibleSection({ title, children, defaultOpen = false }: CollapsibleSectionProps) {
+function CollapsibleSection({ title, icon, children, defaultOpen = false }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="md:col-span-2">
-      <Button
-        variant="ghost"
-        className="w-full justify-between mb-2 text-base font-semibold hover:bg-muted/50"
+    <Card className="glass-card overflow-hidden">
+      <CardHeader
+        className="cursor-pointer hover:bg-muted/30 transition-colors py-4"
         onClick={() => setIsOpen(!isOpen)}
       >
-        {title}
-        {isOpen ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
-      </Button>
-      {isOpen && <div className="grid gap-6 md:grid-cols-2">{children}</div>}
-    </div>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-3 text-base">
+            {icon}
+            {title}
+          </CardTitle>
+          <div className="p-1.5 rounded-md bg-muted/50 hover:bg-muted transition-colors">
+            {isOpen ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+          </div>
+        </div>
+      </CardHeader>
+      {isOpen && (
+        <CardContent className="border-t pt-4">
+          {children}
+        </CardContent>
+      )}
+    </Card>
   );
 }
 
@@ -81,32 +92,32 @@ export default function Maintenance() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <CollapsibleSection title="Yritystiedot">
+        <div className="space-y-4">
+          <CollapsibleSection title="Yritystiedot" icon={<Building2 className="h-5 w-5 text-primary" />}>
             <CompanyInfoManager />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Fleetit">
+          <CollapsibleSection title="Fleetit" icon={<Layers className="h-5 w-5 text-primary" />}>
             <FleetManager />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Laitetyypit">
+          <CollapsibleSection title="Laitetyypit" icon={<Cpu className="h-5 w-5 text-primary" />}>
             <DeviceTypeManager />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Dokumenttityypit">
+          <CollapsibleSection title="Dokumenttityypit" icon={<FileText className="h-5 w-5 text-primary" />}>
             <DocumentTypeManager />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Kunnat">
+          <CollapsibleSection title="Kunnat" icon={<MapPin className="h-5 w-5 text-primary" />}>
             <MunicipalityManager />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Data">
+          <CollapsibleSection title="Data" icon={<Database className="h-5 w-5 text-primary" />}>
             <DataImportExport isAdmin={isAdmin} />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Muutoslokit">
+          <CollapsibleSection title="Muutoslokit" icon={<History className="h-5 w-5 text-primary" />}>
             <AuditLogViewer isAdmin={isAdmin} />
           </CollapsibleSection>
         </div>

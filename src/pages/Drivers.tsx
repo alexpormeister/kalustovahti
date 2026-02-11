@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Users, Search, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Users, Search, Trash2, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -106,6 +106,8 @@ export default function Drivers() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<DriverForm>(defaultForm);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortField, setSortField] = useState<string>("full_name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -297,12 +299,28 @@ export default function Drivers() {
     }
   };
 
-  const filteredDrivers = drivers.filter((d) =>
-    d.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.driver_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.company?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredDrivers = drivers.filter((d) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      d.full_name?.toLowerCase().includes(query) ||
+      d.driver_number?.toLowerCase().includes(query) ||
+      d.phone?.toLowerCase().includes(query) ||
+      d.email?.toLowerCase().includes(query) ||
+      d.company?.name?.toLowerCase().includes(query) ||
+      d.city?.toLowerCase().includes(query)
+    );
+  }).sort((a, b) => {
+    let aVal = "";
+    let bVal = "";
+    switch (sortField) {
+      case "full_name": aVal = a.full_name || ""; bVal = b.full_name || ""; break;
+      case "driver_number": aVal = a.driver_number || ""; bVal = b.driver_number || ""; break;
+      case "company": aVal = a.company?.name || ""; bVal = b.company?.name || ""; break;
+      case "status": aVal = a.status || ""; bVal = b.status || ""; break;
+    }
+    const cmp = aVal.localeCompare(bVal, "fi");
+    return sortDir === "asc" ? cmp : -cmp;
+  });
 
   const {
     currentPage,
@@ -554,7 +572,7 @@ export default function Drivers() {
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Hae nimellä, numerolla tai yrityksellä..."
+            placeholder="Hae nimellä, numerolla, yrityksellä, puhelinnumerolla, kunnalla..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
@@ -566,12 +584,47 @@ export default function Drivers() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="font-semibold text-foreground">Nimi</TableHead>
-                <TableHead className="font-semibold text-foreground">Numero</TableHead>
-                <TableHead className="font-semibold text-foreground">Yritys</TableHead>
+                {[
+                  { key: "full_name", label: "Nimi" },
+                  { key: "driver_number", label: "Numero" },
+                  { key: "company", label: "Yritys" },
+                ].map(({ key, label }) => (
+                  <TableHead
+                    key={key}
+                    className="font-semibold text-foreground cursor-pointer select-none hover:text-primary"
+                    onClick={() => {
+                      if (sortField === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
+                      else { setSortField(key); setSortDir("asc"); }
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      {label}
+                      {sortField === key ? (
+                        sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 opacity-30" />
+                      )}
+                    </div>
+                  </TableHead>
+                ))}
                 <TableHead className="font-semibold text-foreground">Puhelin</TableHead>
                 <TableHead className="font-semibold text-foreground">Ajokortti</TableHead>
-                <TableHead className="font-semibold text-foreground">Tila</TableHead>
+                <TableHead
+                  className="font-semibold text-foreground cursor-pointer select-none hover:text-primary"
+                  onClick={() => {
+                    if (sortField === "status") setSortDir(sortDir === "asc" ? "desc" : "asc");
+                    else { setSortField("status"); setSortDir("asc"); }
+                  }}
+                >
+                  <div className="flex items-center gap-1">
+                    Tila
+                    {sortField === "status" ? (
+                      sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                    ) : (
+                      <ArrowUpDown className="h-3 w-3 opacity-30" />
+                    )}
+                  </div>
+                </TableHead>
                 <TableHead className="w-[100px]"></TableHead>
               </TableRow>
             </TableHeader>

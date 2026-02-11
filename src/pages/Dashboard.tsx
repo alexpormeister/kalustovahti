@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { TodoWidget } from "@/components/dashboard/TodoWidget";
-import { ScratchpadWidget } from "@/components/dashboard/ScratchpadWidget";
 import { WeatherWidget } from "@/components/dashboard/WeatherWidget";
 import { CalendarWidget } from "@/components/dashboard/CalendarWidget";
+import { AnalogClock } from "@/components/dashboard/AnalogClock";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export default function Dashboard() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           <TodoWidget />
-          <ScratchpadWidget />
+          <AnalogClock />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
