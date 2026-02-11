@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   ClipboardCheck,
   ShieldCheck,
   FileCheck,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions, PageKey } from "@/hooks/usePermissions";
@@ -22,17 +24,39 @@ interface NavigationItem {
   pageKey: PageKey;
 }
 
-const navigation: NavigationItem[] = [
-  { name: "Hallintapaneeli", href: "/dashboard", icon: LayoutDashboard, pageKey: "dashboard" },
-  { name: "Autoilijat", href: "/autoilijat", icon: Building2, pageKey: "autoilijat" },
-  { name: "Dokumentit", href: "/dokumentit", icon: FileCheck, pageKey: "dokumentit" },
-  { name: "Kalustolista", href: "/kalusto", icon: Car, pageKey: "kalusto" },
-  { name: "Laitevarasto", href: "/laitteet", icon: Smartphone, pageKey: "laitteet" },
-  { name: "Kuljettajat", href: "/kuljettajat", icon: Users, pageKey: "kuljettajat" },
-  { name: "Attribuutit", href: "/varustelu", icon: Tag, pageKey: "varustelu" },
-  { name: "Laadunvalvonta", href: "/laadunvalvonta", icon: ClipboardCheck, pageKey: "laadunvalvonta" },
-  { name: "Asetukset", href: "/asetukset", icon: Settings, pageKey: "asetukset" },
-  { name: "Käyttäjät", href: "/kayttajat", icon: Users, pageKey: "kayttajat" },
+interface NavigationGroup {
+  label?: string;
+  items: NavigationItem[];
+}
+
+const navigationGroups: NavigationGroup[] = [
+  {
+    items: [
+      { name: "Hallintapaneeli", href: "/dashboard", icon: LayoutDashboard, pageKey: "dashboard" },
+    ],
+  },
+  {
+    label: "Hallinta",
+    items: [
+      { name: "Autoilijat", href: "/autoilijat", icon: Building2, pageKey: "autoilijat" },
+      { name: "Autot", href: "/kalusto", icon: Car, pageKey: "kalusto" },
+      { name: "Kuljettajat", href: "/kuljettajat", icon: Users, pageKey: "kuljettajat" },
+      { name: "Laitevarasto", href: "/laitteet", icon: Smartphone, pageKey: "laitteet" },
+    ],
+  },
+  {
+    items: [
+      { name: "Dokumentit", href: "/dokumentit", icon: FileCheck, pageKey: "dokumentit" },
+      { name: "Attribuutit", href: "/varustelu", icon: Tag, pageKey: "varustelu" },
+      { name: "Laadunvalvonta", href: "/laadunvalvonta", icon: ClipboardCheck, pageKey: "laadunvalvonta" },
+    ],
+  },
+  {
+    items: [
+      { name: "Asetukset", href: "/asetukset", icon: Settings, pageKey: "asetukset" },
+      { name: "Käyttäjät", href: "/kayttajat", icon: Users, pageKey: "kayttajat" },
+    ],
+  },
 ];
 
 interface SidebarProps {
@@ -44,17 +68,24 @@ interface SidebarProps {
 export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
   const location = useLocation();
   const { isSystemAdmin, permissions, isLoading } = usePermissions();
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  // Filter navigation items based on permissions
-  const visibleNavigation = navigation.filter((item) => {
-    if (isLoading) return true; // Show all while loading
+  const toggleGroup = (label: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
+  const isItemVisible = (item: NavigationItem) => {
+    if (isLoading) return true;
     return permissions[item.pageKey]?.can_view;
-  });
+  };
 
   const handleNavClick = () => {
-    if (onNavigate) {
-      onNavigate();
-    }
+    if (onNavigate) onNavigate();
   };
 
   return (
@@ -79,32 +110,83 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
         )}
 
         {/* Navigation */}
-        <nav className={cn("flex-1 space-y-1 px-3", isMobile ? "py-6" : "py-4")}>
-          {visibleNavigation.map((item) => {
-            const isActive = location.pathname === item.href;
+        <nav className={cn("flex-1 space-y-1 px-3 overflow-y-auto", isMobile ? "py-6" : "py-4")}>
+          {navigationGroups.map((group, groupIndex) => {
+            const visibleItems = group.items.filter(isItemVisible);
+            if (visibleItems.length === 0) return null;
+
+            if (group.label) {
+              const isCollapsed = collapsedGroups.has(group.label);
+              const isAnyActive = visibleItems.some((item) => location.pathname === item.href);
+
+              return (
+                <div key={group.label} className="pt-2">
+                  <button
+                    onClick={() => toggleGroup(group.label!)}
+                    className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors"
+                  >
+                    <span>{group.label}</span>
+                    <ChevronDown
+                      className={cn(
+                        "h-3.5 w-3.5 transition-transform",
+                        isCollapsed && "-rotate-90"
+                      )}
+                    />
+                  </button>
+                  {!isCollapsed && (
+                    <div className="space-y-1 mt-1">
+                      {visibleItems.map((item) => {
+                        const isActive = location.pathname === item.href;
+                        return (
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            onClick={handleNavClick}
+                            className={cn("sidebar-nav-item pl-6", isActive && "sidebar-nav-item-active")}
+                          >
+                            <item.icon className="h-5 w-5" />
+                            <span className="font-medium">{item.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={handleNavClick}
-                className={cn("sidebar-nav-item", isActive && "sidebar-nav-item-active")}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="font-medium">{item.name}</span>
-              </Link>
+              <div key={groupIndex} className={groupIndex > 0 ? "pt-2 border-t border-sidebar-border mt-2" : ""}>
+                {visibleItems.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  return (
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      onClick={handleNavClick}
+                      className={cn("sidebar-nav-item", isActive && "sidebar-nav-item-active")}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span className="font-medium">{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
 
           {/* Role Management - Only for system admins */}
           {isSystemAdmin && (
-            <Link
-              to="/roolit"
-              onClick={handleNavClick}
-              className={cn("sidebar-nav-item", location.pathname === "/roolit" && "sidebar-nav-item-active")}
-            >
-              <ShieldCheck className="h-5 w-5" />
-              <span className="font-medium">Roolien hallinta</span>
-            </Link>
+            <div className="pt-2 border-t border-sidebar-border mt-2">
+              <Link
+                to="/roolit"
+                onClick={handleNavClick}
+                className={cn("sidebar-nav-item", location.pathname === "/roolit" && "sidebar-nav-item-active")}
+              >
+                <ShieldCheck className="h-5 w-5" />
+                <span className="font-medium">Roolien hallinta</span>
+              </Link>
+            </div>
           )}
         </nav>
 

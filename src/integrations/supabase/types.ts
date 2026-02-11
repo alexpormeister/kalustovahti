@@ -243,6 +243,72 @@ export type Database = {
           },
         ]
       }
+      device_links: {
+        Row: {
+          created_at: string | null
+          id: string
+          source_device_id: string
+          target_device_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          source_device_id: string
+          target_device_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          source_device_id?: string
+          target_device_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_links_source_device_id_fkey"
+            columns: ["source_device_id"]
+            isOneToOne: false
+            referencedRelation: "hardware_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_links_target_device_id_fkey"
+            columns: ["target_device_id"]
+            isOneToOne: false
+            referencedRelation: "hardware_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_types: {
+        Row: {
+          created_at: string | null
+          display_name: string
+          has_sim: boolean | null
+          id: string
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name: string
+          has_sim?: boolean | null
+          id?: string
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string
+          has_sim?: boolean | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       document_types: {
         Row: {
           created_at: string
@@ -250,6 +316,7 @@ export type Database = {
           id: string
           is_required: boolean
           name: string
+          scope: string | null
           validity_period_months: number | null
         }
         Insert: {
@@ -258,6 +325,7 @@ export type Database = {
           id?: string
           is_required?: boolean
           name: string
+          scope?: string | null
           validity_period_months?: number | null
         }
         Update: {
@@ -266,9 +334,130 @@ export type Database = {
           id?: string
           is_required?: boolean
           name?: string
+          scope?: string | null
           validity_period_months?: number | null
         }
         Relationships: []
+      }
+      driver_attribute_links: {
+        Row: {
+          attribute_id: string
+          created_at: string | null
+          driver_id: string
+          id: string
+        }
+        Insert: {
+          attribute_id: string
+          created_at?: string | null
+          driver_id: string
+          id?: string
+        }
+        Update: {
+          attribute_id?: string
+          created_at?: string | null
+          driver_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_attribute_links_attribute_id_fkey"
+            columns: ["attribute_id"]
+            isOneToOne: false
+            referencedRelation: "driver_attributes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_attribute_links_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_attributes: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      driver_documents: {
+        Row: {
+          created_at: string | null
+          document_type_id: string
+          driver_id: string
+          file_name: string
+          file_path: string
+          file_type: string | null
+          id: string
+          notes: string | null
+          status: string | null
+          updated_at: string | null
+          uploaded_by: string | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_type_id: string
+          driver_id: string
+          file_name: string
+          file_path: string
+          file_type?: string | null
+          id?: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_type_id?: string
+          driver_id?: string
+          file_name?: string
+          file_path?: string
+          file_type?: string | null
+          id?: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          uploaded_by?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_documents_document_type_id_fkey"
+            columns: ["document_type_id"]
+            isOneToOne: false
+            referencedRelation: "document_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_documents_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       drivers: {
         Row: {
