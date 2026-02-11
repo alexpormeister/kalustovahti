@@ -46,12 +46,7 @@ import { Badge } from "@/components/ui/badge";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 
-const FINNISH_PROVINCES = [
-  "Uusimaa", "Varsinais-Suomi", "Satakunta", "Kanta-Häme", "Pirkanmaa",
-  "Päijät-Häme", "Kymenlaakso", "Etelä-Karjala", "Etelä-Savo", "Pohjois-Savo",
-  "Pohjois-Karjala", "Keski-Suomi", "Etelä-Pohjanmaa", "Pohjanmaa",
-  "Keski-Pohjanmaa", "Pohjois-Pohjanmaa", "Kainuu", "Lappi", "Ahvenanmaa",
-];
+// Note: municipalities are fetched from DB below
 
 // Note: municipalities are fetched from DB below
 
@@ -80,8 +75,8 @@ interface DriverForm {
   notes: string;
   status: string;
   company_id: string;
-  province: string;
-  city: string;
+  address: string;
+  municipalities: string[];
   ssn_encrypted: string;
 }
 
@@ -94,8 +89,8 @@ const defaultForm: DriverForm = {
   notes: "",
   status: "active",
   company_id: "",
-  province: "",
-  city: "",
+  address: "",
+  municipalities: [],
   ssn_encrypted: "",
 };
 
@@ -176,8 +171,8 @@ export default function Drivers() {
           notes: formData.notes || null,
           status: formData.status,
           company_id: formData.company_id || null,
-          province: formData.province || null,
-          city: formData.city || null,
+          city: formData.municipalities.join(", ") || null,
+          province: null,
           ssn_encrypted: formData.ssn_encrypted || null,
         }]);
       
@@ -217,8 +212,8 @@ export default function Drivers() {
           notes: formData.notes || null,
           status: formData.status,
           company_id: formData.company_id || null,
-          province: formData.province || null,
-          city: formData.city || null,
+          city: formData.municipalities.join(", ") || null,
+          province: null,
           // SSN not editable from list - only from driver profile
         })
         .eq("id", editingId);
@@ -272,8 +267,8 @@ export default function Drivers() {
       notes: driver.notes || "",
       status: driver.status || "active",
       company_id: driver.company_id || "",
-      province: driver.province || "",
-      city: driver.city || "",
+      address: (driver as any).address || "",
+      municipalities: driver.city ? driver.city.split(", ").filter(Boolean) : [],
       ssn_encrypted: driver.ssn_encrypted || "",
     });
     setEditingId(driver.id);
@@ -478,31 +473,47 @@ export default function Drivers() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Maakunta</Label>
-                    <Select
-                      value={form.province || "none"}
-                      onValueChange={(value) => setForm({ ...form, province: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Valitse maakunta" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Ei valittu</SelectItem>
-                        {FINNISH_PROVINCES.map((p) => (
-                          <SelectItem key={p} value={p}>{p}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Osoite</Label>
+                  <Input
+                    id="address"
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                    placeholder="Esimerkkikatu 1, 00100 Helsinki"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Kunnat</Label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {form.municipalities.map((m) => (
+                      <Badge key={m} variant="secondary" className="gap-1">
+                        {m}
+                        <button
+                          type="button"
+                          className="ml-1 hover:text-destructive"
+                          onClick={() => setForm({ ...form, municipalities: form.municipalities.filter((x) => x !== m) })}
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    ))}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Kaupunki</Label>
-                    <Input
-                      id="city"
-                      value={form.city}
-                      onChange={(e) => setForm({ ...form, city: e.target.value })}
-                      placeholder="Esim. Helsinki"
-                    />
-                  </div>
+                  <Select
+                    value="none"
+                    onValueChange={(value) => {
+                      if (value !== "none" && !form.municipalities.includes(value)) {
+                        setForm({ ...form, municipalities: [...form.municipalities, value] });
+                      }
+                    }}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Lisää kunta" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Valitse kunta</SelectItem>
+                      {municipalities.filter((m: any) => !form.municipalities.includes(m.name)).map((m: any) => (
+                        <SelectItem key={m.name} value={m.name}>{m.name}{m.province ? ` (${m.province})` : ""}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {isCreating && (
                   <div className="space-y-2">

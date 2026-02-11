@@ -61,10 +61,10 @@ const chartFields: Record<string, { field: string; label: string }[]> = {
   fleets: [],
 };
 
-const CHART_COLORS = [
-  "hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--destructive))",
-  "hsl(142 76% 36%)", "hsl(38 92% 50%)", "hsl(280 67% 52%)",
-  "hsl(200 80% 50%)", "hsl(340 80% 55%)", "hsl(160 60% 45%)", "hsl(20 80% 55%)",
+const DEFAULT_CHART_COLORS = [
+  "#6366f1", "#f59e0b", "#ef4444",
+  "#22c55e", "#3b82f6", "#a855f7",
+  "#06b6d4", "#ec4899", "#14b8a6", "#f97316",
 ];
 
 export default function Reports() {
@@ -78,6 +78,7 @@ export default function Reports() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [chartField, setChartField] = useState("");
   const [chartType, setChartType] = useState<"bar" | "pie">("bar");
+  const [chartColors, setChartColors] = useState<string[]>([...DEFAULT_CHART_COLORS]);
   const chartRef = useRef<HTMLDivElement>(null);
 
   const { data: reportData = [], isLoading } = useQuery({
@@ -446,9 +447,11 @@ export default function Reports() {
                       </Button>
                     </div>
                     {chartField && chartData.length > 0 && (
-                      <Button variant="outline" size="sm" onClick={exportChartImage} className="gap-1">
-                        <Image className="h-4 w-4" />Lataa kuva
-                      </Button>
+                      <>
+                        <Button variant="outline" size="sm" onClick={exportChartImage} className="gap-1">
+                          <Image className="h-4 w-4" />Lataa kuva
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -459,6 +462,24 @@ export default function Reports() {
                 ) : chartData.length === 0 ? (
                   <p className="text-center py-12 text-muted-foreground">Ei dataa kaavioon</p>
                 ) : (
+                  <>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {chartData.map((item, index) => (
+                        <div key={item.name} className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={chartColors[index % chartColors.length]}
+                            onChange={(e) => {
+                              const newColors = [...chartColors];
+                              newColors[index] = e.target.value;
+                              setChartColors(newColors);
+                            }}
+                            className="w-6 h-6 rounded cursor-pointer border-0"
+                          />
+                          <span className="text-xs text-muted-foreground">{item.name}</span>
+                        </div>
+                      ))}
+                    </div>
                   <div ref={chartRef} className="w-full" style={{ height: 400 }}>
                     {chartType === "bar" ? (
                       <ResponsiveContainer width="100%" height="100%">
@@ -469,7 +490,7 @@ export default function Reports() {
                           <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
                           <Bar dataKey="value" name="Määrä" radius={[4, 4, 0, 0]}>
                             {chartData.map((_, index) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                              <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                             ))}
                           </Bar>
                         </BarChart>
@@ -481,7 +502,7 @@ export default function Reports() {
                             label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                             outerRadius={140} dataKey="value">
                             {chartData.map((_, index) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                              <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                             ))}
                           </Pie>
                           <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
@@ -490,6 +511,7 @@ export default function Reports() {
                       </ResponsiveContainer>
                     )}
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
