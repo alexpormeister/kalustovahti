@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { TodoWidget } from "@/components/dashboard/TodoWidget";
 import { WeatherWidget } from "@/components/dashboard/WeatherWidget";
-import { CalendarWidget } from "@/components/dashboard/CalendarWidget";
 import { AnalogClock } from "@/components/dashboard/AnalogClock";
 
 export default function Dashboard() {
@@ -52,9 +51,8 @@ export default function Dashboard() {
           <AnalogClock />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-1">
           <WeatherWidget />
-          <CalendarWidget />
         </div>
       </div>
     </DashboardLayout>
