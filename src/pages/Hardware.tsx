@@ -15,11 +15,93 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Smartphone } from "lucide-react";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import { Plus, Search, Smartphone, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/ui/PaginationControls";
+import { cn } from "@/lib/utils";
+
+// Searchable vehicle select
+function VehicleSearchSelect({ vehicles, value, onChange }: { vehicles: any[]; value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = vehicles.find((v) => v.id === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+          {selected ? `${selected.vehicle_number} - ${selected.registration_number}` : "Valitse auto..."}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Hae autonumerolla..." />
+          <CommandList>
+            <CommandEmpty>Ei tuloksia</CommandEmpty>
+            <CommandGroup>
+              <CommandItem value="none" onSelect={() => { onChange(""); setOpen(false); }}>
+                <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+                Ei liitetty
+              </CommandItem>
+              {vehicles.map((v) => (
+                <CommandItem key={v.id} value={`${v.vehicle_number} ${v.registration_number}`} onSelect={() => { onChange(v.id); setOpen(false); }}>
+                  <Check className={cn("mr-2 h-4 w-4", value === v.id ? "opacity-100" : "opacity-0")} />
+                  {v.vehicle_number} - {v.registration_number}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// Searchable company select
+function CompanySearchSelect({ companies, value, onChange }: { companies: any[]; value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const selected = companies.find((c) => c.id === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+          {selected ? selected.name : "Valitse yritys..."}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Hae nimellä tai Y-tunnuksella..." />
+          <CommandList>
+            <CommandEmpty>Ei tuloksia</CommandEmpty>
+            <CommandGroup>
+              <CommandItem value="none" onSelect={() => { onChange(""); setOpen(false); }}>
+                <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+                Ei määritetty
+              </CommandItem>
+              {companies.map((c) => (
+                <CommandItem key={c.id} value={`${c.name} ${c.business_id || ""}`} onSelect={() => { onChange(c.id); setOpen(false); }}>
+                  <Check className={cn("mr-2 h-4 w-4", value === c.id ? "opacity-100" : "opacity-0")} />
+                  <div>
+                    <span>{c.name}</span>
+                    {c.business_id && <span className="ml-2 text-muted-foreground text-xs">{c.business_id}</span>}
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 type DeviceStatus = "available" | "installed" | "maintenance" | "decommissioned";
 
@@ -130,11 +212,11 @@ export default function Hardware() {
   });
 
   const { data: companies = [] } = useQuery({
-    queryKey: ["companies-list"],
+    queryKey: ["companies-list-full"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companies")
-        .select("id, name")
+        .select("id, name, business_id")
         .order("name");
       if (error) throw error;
       return data;
@@ -326,33 +408,19 @@ export default function Hardware() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label>Liitetty autoon</Label>
-          <Select
-            value={formData.vehicle_id || "none"}
-            onValueChange={(value) => setFormData({ ...formData, vehicle_id: value === "none" ? "" : value })}
-          >
-            <SelectTrigger><SelectValue placeholder="Valitse auto" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Ei liitetty</SelectItem>
-              {vehicles.map((v) => (
-                <SelectItem key={v.id} value={v.id}>{v.vehicle_number} - {v.registration_number}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <VehicleSearchSelect
+            vehicles={vehicles}
+            value={formData.vehicle_id}
+            onChange={(value) => setFormData({ ...formData, vehicle_id: value })}
+          />
         </div>
         <div>
           <Label>Yritys</Label>
-          <Select
-            value={formData.company_id || "none"}
-            onValueChange={(value) => setFormData({ ...formData, company_id: value === "none" ? "" : value })}
-          >
-            <SelectTrigger><SelectValue placeholder="Valitse yritys" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Ei määritetty</SelectItem>
-              {companies.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CompanySearchSelect
+            companies={companies}
+            value={formData.company_id}
+            onChange={(value) => setFormData({ ...formData, company_id: value })}
+          />
         </div>
       </div>
 
