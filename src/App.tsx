@@ -12,6 +12,9 @@ import DocumentChecklist from "./pages/DocumentChecklist";
 import Fleet from "./pages/Fleet";
 import Hardware from "./pages/Hardware";
 import Drivers from "./pages/Drivers";
+import DriverProfile from "./pages/DriverProfile";
+import VehicleProfile from "./pages/VehicleProfile";
+import DriverMap from "./pages/DriverMap";
 import Equipment from "./pages/Equipment";
 import Settings from "./pages/Settings";
 import UserManagement from "./pages/UserManagement";
@@ -35,8 +38,11 @@ const App = () => (
           <Route path="/autoilijat/:id" element={<CompanyProfile />} />
           <Route path="/dokumentit" element={<DocumentChecklist />} />
           <Route path="/kalusto" element={<Fleet />} />
+          <Route path="/kalusto/:id" element={<VehicleProfile />} />
           <Route path="/laitteet" element={<Hardware />} />
           <Route path="/kuljettajat" element={<Drivers />} />
+          <Route path="/kuljettajat/:id" element={<DriverProfile />} />
+          <Route path="/kartta" element={<DriverMap />} />
           <Route path="/varustelu" element={<Equipment />} />
           <Route path="/laadunvalvonta" element={<QualityControl />} />
           <Route path="/asetukset" element={<Settings />} />

@@ -1,18 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
-  Car,
-  Users,
-  Building2,
-  Settings,
-  LogOut,
-  Tag,
-  Smartphone,
-  ClipboardCheck,
-  ShieldCheck,
-  FileCheck,
-  ChevronDown,
+  LayoutDashboard, Car, Users, Building2, Settings, LogOut, Tag,
+  Smartphone, ClipboardCheck, ShieldCheck, FileCheck, ChevronDown, Map,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions, PageKey } from "@/hooks/usePermissions";
@@ -27,6 +17,7 @@ interface NavigationItem {
 interface NavigationGroup {
   label?: string;
   items: NavigationItem[];
+  defaultCollapsed?: boolean;
 }
 
 const navigationGroups: NavigationGroup[] = [
@@ -37,11 +28,13 @@ const navigationGroups: NavigationGroup[] = [
   },
   {
     label: "Hallinta",
+    defaultCollapsed: true,
     items: [
       { name: "Autoilijat", href: "/autoilijat", icon: Building2, pageKey: "autoilijat" },
       { name: "Autot", href: "/kalusto", icon: Car, pageKey: "kalusto" },
       { name: "Kuljettajat", href: "/kuljettajat", icon: Users, pageKey: "kuljettajat" },
       { name: "Laitevarasto", href: "/laitteet", icon: Smartphone, pageKey: "laitteet" },
+      { name: "Karttanäkymä", href: "/kartta", icon: Map, pageKey: "kalusto" },
     ],
   },
   {
@@ -68,7 +61,17 @@ interface SidebarProps {
 export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
   const location = useLocation();
   const { isSystemAdmin, permissions, isLoading } = usePermissions();
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    navigationGroups.forEach((g) => {
+      if (g.label && g.defaultCollapsed) {
+        // Only collapse if user is NOT on a page in this group
+        const isOnGroupPage = g.items.some((item) => location.pathname === item.href || location.pathname.startsWith(item.href + "/"));
+        if (!isOnGroupPage) initial.add(g.label);
+      }
+    });
+    return initial;
+  });
 
   const toggleGroup = (label: string) => {
     setCollapsedGroups((prev) => {
@@ -89,14 +92,8 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
   };
 
   return (
-    <aside
-      className={cn(
-        "bg-sidebar border-r border-sidebar-border",
-        isMobile ? "h-full w-full" : "fixed left-0 top-0 z-40 h-screen w-64",
-      )}
-    >
+    <aside className={cn("bg-sidebar border-r border-sidebar-border", isMobile ? "h-full w-full" : "fixed left-0 top-0 z-40 h-screen w-64")}>
       <div className="flex h-full flex-col">
-        {/* Logo - only show on desktop */}
         {!isMobile && (
           <div className="flex h-16 items-center gap-3 px-6 border-b border-sidebar-border">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
@@ -109,7 +106,6 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
           </div>
         )}
 
-        {/* Navigation */}
         <nav className={cn("flex-1 space-y-1 px-3 overflow-y-auto", isMobile ? "py-6" : "py-4")}>
           {navigationGroups.map((group, groupIndex) => {
             const visibleItems = group.items.filter(isItemVisible);
@@ -117,8 +113,6 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
 
             if (group.label) {
               const isCollapsed = collapsedGroups.has(group.label);
-              const isAnyActive = visibleItems.some((item) => location.pathname === item.href);
-
               return (
                 <div key={group.label} className="pt-2">
                   <button
@@ -126,24 +120,14 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
                     className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors"
                   >
                     <span>{group.label}</span>
-                    <ChevronDown
-                      className={cn(
-                        "h-3.5 w-3.5 transition-transform",
-                        isCollapsed && "-rotate-90"
-                      )}
-                    />
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isCollapsed && "-rotate-90")} />
                   </button>
                   {!isCollapsed && (
                     <div className="space-y-1 mt-1">
                       {visibleItems.map((item) => {
-                        const isActive = location.pathname === item.href;
+                        const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + "/");
                         return (
-                          <Link
-                            key={item.name}
-                            to={item.href}
-                            onClick={handleNavClick}
-                            className={cn("sidebar-nav-item pl-6", isActive && "sidebar-nav-item-active")}
-                          >
+                          <Link key={item.name} to={item.href} onClick={handleNavClick} className={cn("sidebar-nav-item pl-6", isActive && "sidebar-nav-item-active")}>
                             <item.icon className="h-5 w-5" />
                             <span className="font-medium">{item.name}</span>
                           </Link>
@@ -158,14 +142,9 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
             return (
               <div key={groupIndex} className={groupIndex > 0 ? "pt-2 border-t border-sidebar-border mt-2" : ""}>
                 {visibleItems.map((item) => {
-                  const isActive = location.pathname === item.href;
+                  const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + "/");
                   return (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      onClick={handleNavClick}
-                      className={cn("sidebar-nav-item", isActive && "sidebar-nav-item-active")}
-                    >
+                    <Link key={item.name} to={item.href} onClick={handleNavClick} className={cn("sidebar-nav-item", isActive && "sidebar-nav-item-active")}>
                       <item.icon className="h-5 w-5" />
                       <span className="font-medium">{item.name}</span>
                     </Link>
@@ -175,14 +154,9 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
             );
           })}
 
-          {/* Role Management - Only for system admins */}
           {isSystemAdmin && (
             <div className="pt-2 border-t border-sidebar-border mt-2">
-              <Link
-                to="/roolit"
-                onClick={handleNavClick}
-                className={cn("sidebar-nav-item", location.pathname === "/roolit" && "sidebar-nav-item-active")}
-              >
+              <Link to="/roolit" onClick={handleNavClick} className={cn("sidebar-nav-item", location.pathname === "/roolit" && "sidebar-nav-item-active")}>
                 <ShieldCheck className="h-5 w-5" />
                 <span className="font-medium">Roolien hallinta</span>
               </Link>
@@ -190,12 +164,8 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
           )}
         </nav>
 
-        {/* Footer */}
         <div className="border-t border-sidebar-border p-3">
-          <button
-            onClick={onLogout}
-            className="sidebar-nav-item w-full text-left hover:bg-destructive/20 hover:text-destructive"
-          >
+          <button onClick={onLogout} className="sidebar-nav-item w-full text-left hover:bg-destructive/20 hover:text-destructive">
             <LogOut className="h-5 w-5" />
             <span className="font-medium">Kirjaudu ulos</span>
           </button>

@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Users, Search, Trash2 } from "lucide-react";
+import { Plus, Pencil, Users, Search, Trash2, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +46,13 @@ import { Badge } from "@/components/ui/badge";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 
+const FINNISH_PROVINCES = [
+  "Uusimaa", "Varsinais-Suomi", "Satakunta", "Kanta-Häme", "Pirkanmaa",
+  "Päijät-Häme", "Kymenlaakso", "Etelä-Karjala", "Etelä-Savo", "Pohjois-Savo",
+  "Pohjois-Karjala", "Keski-Suomi", "Etelä-Pohjanmaa", "Pohjanmaa",
+  "Keski-Pohjanmaa", "Pohjois-Pohjanmaa", "Kainuu", "Lappi", "Ahvenanmaa",
+];
+
 interface Driver {
   id: string;
   driver_number: string;
@@ -56,6 +63,9 @@ interface Driver {
   notes: string | null;
   status: string;
   company_id: string | null;
+  province: string | null;
+  city: string | null;
+  ssn_encrypted: string | null;
   company?: { name: string } | null;
 }
 
@@ -68,6 +78,9 @@ interface DriverForm {
   notes: string;
   status: string;
   company_id: string;
+  province: string;
+  city: string;
+  ssn_encrypted: string;
 }
 
 const defaultForm: DriverForm = {
@@ -79,6 +92,14 @@ const defaultForm: DriverForm = {
   notes: "",
   status: "active",
   company_id: "",
+  province: "",
+  city: "",
+  ssn_encrypted: "",
+};
+
+const validateHetu = (hetu: string): boolean => {
+  if (!hetu) return true;
+  return /^\d{6}[-+A-Ya-y]\d{3}[\dA-Za-z]$/.test(hetu);
 };
 
 export default function Drivers() {
@@ -143,6 +164,9 @@ export default function Drivers() {
           notes: formData.notes || null,
           status: formData.status,
           company_id: formData.company_id || null,
+          province: formData.province || null,
+          city: formData.city || null,
+          ssn_encrypted: formData.ssn_encrypted || null,
         }]);
       
       if (error) throw error;
@@ -181,6 +205,9 @@ export default function Drivers() {
           notes: formData.notes || null,
           status: formData.status,
           company_id: formData.company_id || null,
+          province: formData.province || null,
+          city: formData.city || null,
+          ssn_encrypted: formData.ssn_encrypted || null,
         })
         .eq("id", editingId);
 
@@ -233,6 +260,9 @@ export default function Drivers() {
       notes: driver.notes || "",
       status: driver.status || "active",
       company_id: driver.company_id || "",
+      province: driver.province || "",
+      city: driver.city || "",
+      ssn_encrypted: driver.ssn_encrypted || "",
     });
     setEditingId(driver.id);
     setDialogOpen(true);
@@ -247,6 +277,10 @@ export default function Drivers() {
     e.preventDefault();
     if (!form.full_name || !form.driver_number) {
       toast.error("Nimi ja kuljettajanumero ovat pakollisia");
+      return;
+    }
+    if (form.ssn_encrypted && !validateHetu(form.ssn_encrypted)) {
+      toast.error("Henkilötunnus on virheellisessä muodossa");
       return;
     }
     if (editingId) {
@@ -432,6 +466,42 @@ export default function Drivers() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Maakunta</Label>
+                    <Select
+                      value={form.province || "none"}
+                      onValueChange={(value) => setForm({ ...form, province: value === "none" ? "" : value })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Valitse maakunta" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Ei valittu</SelectItem>
+                        {FINNISH_PROVINCES.map((p) => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Kaupunki</Label>
+                    <Input
+                      id="city"
+                      value={form.city}
+                      onChange={(e) => setForm({ ...form, city: e.target.value })}
+                      placeholder="Helsinki"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ssn">Henkilötunnus (HETU)</Label>
+                  <Input
+                    id="ssn"
+                    value={form.ssn_encrypted}
+                    onChange={(e) => setForm({ ...form, ssn_encrypted: e.target.value })}
+                    placeholder="120190-123A"
+                  />
+                  <p className="text-xs text-muted-foreground">Muoto: PPKKVV-XXXC (uudet välimerkit tuettu)</p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="notes">Muistiinpanot</Label>
                   <Textarea
@@ -533,24 +603,13 @@ export default function Drivers() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleEdit(driver)}
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/kuljettajat/${driver.id}`)} title="Avaa profiili">
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(driver)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            if (confirm("Haluatko varmasti poistaa tämän kuljettajan?")) {
-                              deleteMutation.mutate(driver.id);
-                            }
-                          }}
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { if (confirm("Haluatko varmasti poistaa?")) deleteMutation.mutate(driver.id); }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
