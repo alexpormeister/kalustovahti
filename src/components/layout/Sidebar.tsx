@@ -43,7 +43,7 @@ const navigationGroups: NavigationGroup[] = [
   {
     items: [
       { name: "Dokumentit", href: "/dokumentit", icon: FileCheck, pageKey: "dokumentit" },
-      { name: "Attribuutit", href: "/varustelu", icon: Tag, pageKey: "varustelu" },
+      
       { name: "Laadunvalvonta", href: "/laadunvalvonta", icon: ClipboardCheck, pageKey: "laadunvalvonta" },
       { name: "Raportit", href: "/raportit", icon: FileSpreadsheet, pageKey: "dashboard" },
     ],
