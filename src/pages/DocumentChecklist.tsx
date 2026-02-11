@@ -6,31 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Search,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  FileText,
-  Building2,
-  ExternalLink,
-} from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, AlertTriangle, CheckCircle2, Clock, XCircle, FileText, Building2, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { isBefore, addDays, format } from "date-fns";
 import { fi } from "date-fns/locale";
@@ -141,8 +119,8 @@ export default function DocumentChecklist() {
       missingDocuments.length > 0 || expiredDocuments.length > 0
         ? "critical"
         : expiringDocuments.length > 0
-        ? "warning"
-        : "ok";
+          ? "warning"
+          : "ok";
 
     return {
       company,
@@ -175,15 +153,10 @@ export default function DocumentChecklist() {
     return order[a.overallStatus] - order[b.overallStatus];
   });
 
-  const {
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    paginatedData,
-    startIndex,
-    endIndex,
-    totalItems,
-  } = usePagination(sortedStatuses, { pageSize: 20 });
+  const { currentPage, setCurrentPage, totalPages, paginatedData, startIndex, endIndex, totalItems } = usePagination(
+    sortedStatuses,
+    { pageSize: 20 },
+  );
 
   // Stats
   const stats = {
@@ -197,69 +170,7 @@ export default function DocumentChecklist() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dokumenttien tarkistuslista</h1>
-          <p className="text-muted-foreground mt-1">
-            Seuraa autoilijoiden pakollisten dokumenttien tilaa
-          </p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card
-            className={`cursor-pointer transition-colors ${
-              statusFilter === "critical" ? "ring-2 ring-destructive" : ""
-            }`}
-            onClick={() => setStatusFilter(statusFilter === "critical" ? "all" : "critical")}
-          >
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
-                  <XCircle className="h-5 w-5 text-destructive" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-destructive">{stats.critical}</p>
-                  <p className="text-sm text-muted-foreground">Puuttuvia / vanhentuneita</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`cursor-pointer transition-colors ${
-              statusFilter === "warning" ? "ring-2 ring-status-maintenance" : ""
-            }`}
-            onClick={() => setStatusFilter(statusFilter === "warning" ? "all" : "warning")}
-          >
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-status-maintenance/10">
-                  <Clock className="h-5 w-5 text-status-maintenance-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-status-maintenance-foreground">{stats.warning}</p>
-                  <p className="text-sm text-muted-foreground">Vanhenee pian (30pv)</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`cursor-pointer transition-colors ${
-              statusFilter === "ok" ? "ring-2 ring-status-active" : ""
-            }`}
-            onClick={() => setStatusFilter(statusFilter === "ok" ? "all" : "ok")}
-          >
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-status-active/10">
-                  <CheckCircle2 className="h-5 w-5 text-status-active-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-status-active-foreground">{stats.ok}</p>
-                  <p className="text-sm text-muted-foreground">Kunnossa ({stats.ok})</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <p className="text-muted-foreground mt-1">Seuraa autoilijoiden pakollisten dokumenttien tilaa</p>
         </div>
 
         {/* Search and filters */}
@@ -293,19 +204,13 @@ export default function DocumentChecklist() {
               <FileText className="h-5 w-5 text-primary" />
               Autoilijat ja dokumentit ({sortedStatuses.length})
             </CardTitle>
-            <CardDescription>
-              Pakolliset dokumentit: {documentTypes.map((dt) => dt.name).join(", ")}
-            </CardDescription>
+            <CardDescription>Pakolliset dokumentit: {documentTypes.map((dt) => dt.name).join(", ")}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Ladataan...
-              </div>
+              <div className="text-center py-8 text-muted-foreground">Ladataan...</div>
             ) : paginatedData.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Ei autoilijoita
-              </div>
+              <div className="text-center py-8 text-muted-foreground">Ei autoilijoita</div>
             ) : (
               <>
                 <Table>
@@ -327,8 +232,8 @@ export default function DocumentChecklist() {
                           status.overallStatus === "critical"
                             ? "bg-destructive/5"
                             : status.overallStatus === "warning"
-                            ? "bg-status-maintenance/5"
-                            : ""
+                              ? "bg-status-maintenance/5"
+                              : ""
                         }
                       >
                         <TableCell className="font-medium">
@@ -359,8 +264,7 @@ export default function DocumentChecklist() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {status.missingDocuments.length > 0 ||
-                          status.expiredDocuments.length > 0 ? (
+                          {status.missingDocuments.length > 0 || status.expiredDocuments.length > 0 ? (
                             <div className="text-sm text-destructive">
                               {[
                                 ...status.missingDocuments.map((d) => d.name),
