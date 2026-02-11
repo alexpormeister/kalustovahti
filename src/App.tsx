@@ -15,7 +15,7 @@ import Drivers from "./pages/Drivers";
 import DriverProfile from "./pages/DriverProfile";
 import VehicleProfile from "./pages/VehicleProfile";
 
-import Equipment from "./pages/Equipment";
+
 import Settings from "./pages/Settings";
 import Maintenance from "./pages/Maintenance";
 import UserManagement from "./pages/UserManagement";
@@ -45,7 +45,7 @@ const App = () => (
           <Route path="/kuljettajat" element={<Drivers />} />
           <Route path="/kuljettajat/:id" element={<DriverProfile />} />
           
-          <Route path="/varustelu" element={<Equipment />} />
+          
           <Route path="/laadunvalvonta" element={<QualityControl />} />
           <Route path="/asetukset" element={<Settings />} />
           <Route path="/yllapito" element={<Maintenance />} />
