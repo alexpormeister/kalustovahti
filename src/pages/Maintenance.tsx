@@ -7,7 +7,7 @@ import { DocumentTypeManager } from "@/components/settings/DocumentTypeManager";
 import { DataImportExport } from "@/components/settings/DataImportExport";
 import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
 import { FleetManager } from "@/components/settings/FleetManager";
-import { MunicipalityManager } from "@/components/settings/MunicipalityManager";
+import { CompanyInfoManager } from "@/components/settings/CompanyInfoManager";
 import { toast } from "sonner";
 
 export default function Maintenance() {
@@ -55,8 +55,8 @@ export default function Maintenance() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
+          <CompanyInfoManager />
           <FleetManager />
-          <MunicipalityManager />
           <DeviceTypeManager />
           <DocumentTypeManager />
           <DataImportExport isAdmin={isAdmin} />

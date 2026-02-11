@@ -26,7 +26,7 @@ import {
   PieChart as RechartsPie, Pie, Cell, Legend,
 } from "recharts";
 
-type ReportType = "vehicles" | "drivers" | "companies" | "hardware" | "quality_incidents" | "audit_logs";
+type ReportType = "vehicles" | "drivers" | "companies" | "hardware" | "quality_incidents" | "audit_logs" | "documents" | "fleets";
 
 const reportTypes: { value: ReportType; label: string }[] = [
   { value: "vehicles", label: "Autot" },
@@ -34,6 +34,8 @@ const reportTypes: { value: ReportType; label: string }[] = [
   { value: "companies", label: "Autoilijat" },
   { value: "hardware", label: "Laitteet" },
   { value: "quality_incidents", label: "Laatupoikkeamat" },
+  { value: "documents", label: "Dokumentit" },
+  { value: "fleets", label: "Fleetit" },
   { value: "audit_logs", label: "Muutoslokit" },
 ];
 
@@ -44,9 +46,10 @@ const columnLabels: Record<string, Record<string, string>> = {
   hardware: { serial_number: "Sarjanumero", device_type: "Tyyppi", status: "Tila", sim_number: "SIM", created_at: "Luotu" },
   quality_incidents: { incident_type: "Tyyppi", status: "Tila", incident_date: "Päivä", description: "Kuvaus", source: "Lähde" },
   audit_logs: { table_name: "Taulu", action: "Toiminto", description: "Kuvaus", created_at: "Aika" },
+  documents: { file_name: "Tiedosto", status: "Tila", valid_from: "Alkaen", valid_until: "Saakka", created_at: "Luotu" },
+  fleets: { name: "Nimi", description: "Kuvaus", created_at: "Luotu" },
 };
 
-// Chart field config per report type
 const chartFields: Record<string, { field: string; label: string }[]> = {
   vehicles: [{ field: "status", label: "Tila" }, { field: "brand", label: "Merkki" }, { field: "city", label: "Kaupunki" }],
   drivers: [{ field: "status", label: "Tila" }, { field: "city", label: "Kaupunki" }, { field: "province", label: "Maakunta" }],
@@ -54,6 +57,8 @@ const chartFields: Record<string, { field: string; label: string }[]> = {
   hardware: [{ field: "status", label: "Tila" }, { field: "device_type", label: "Tyyppi" }],
   quality_incidents: [{ field: "status", label: "Tila" }, { field: "incident_type", label: "Tyyppi" }],
   audit_logs: [{ field: "action", label: "Toiminto" }, { field: "table_name", label: "Taulu" }],
+  documents: [{ field: "status", label: "Tila" }],
+  fleets: [],
 };
 
 const CHART_COLORS = [
@@ -98,6 +103,12 @@ export default function Reports() {
         case "audit_logs":
           query = supabase.from("audit_logs").select("table_name, action, description, created_at").order("created_at", { ascending: false }).limit(500);
           break;
+        case "documents":
+          query = supabase.from("company_documents").select("file_name, status, valid_from, valid_until, created_at").order("created_at", { ascending: false });
+          break;
+        case "fleets":
+          query = supabase.from("fleets").select("name, description, created_at").order("name");
+          break;
       }
       const { data, error } = await query;
       if (error) throw error;
@@ -125,15 +136,39 @@ export default function Reports() {
     enabled: reportType === "vehicles" && selectedAttributes.length > 0,
   });
 
+  const { data: driverAttributes = [] } = useQuery({
+    queryKey: ["driver-attributes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("driver_attributes").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: reportType === "drivers",
+  });
+
+  const { data: driverAttrLinks = [] } = useQuery({
+    queryKey: ["driver-attr-links-report"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("driver_attribute_links").select("driver_id, attribute_id");
+      if (error) throw error;
+      return data;
+    },
+    enabled: reportType === "drivers" && selectedAttributes.length > 0,
+  });
+
   const columns = Object.keys(columnLabels[reportType] || {}).filter(c => c !== "id");
   const labels = columnLabels[reportType] || {};
 
-  // Get unique cities from data for filter
   const uniqueCities = useMemo(() => {
     if (reportType !== "vehicles" && reportType !== "drivers") return [];
     const cities = new Set(reportData.filter((r: any) => r.city).map((r: any) => r.city));
     return Array.from(cities).sort();
   }, [reportData, reportType]);
+
+  const uniqueStatuses = useMemo(() => {
+    const statuses = new Set(reportData.filter((r: any) => r.status).map((r: any) => r.status));
+    return Array.from(statuses).sort();
+  }, [reportData]);
 
   const filteredData = useMemo(() => {
     let data = reportData;
@@ -164,12 +199,18 @@ export default function Reports() {
       });
     }
 
+    if (reportType === "drivers" && selectedAttributes.length > 0) {
+      data = data.filter((row: any) => {
+        const links = driverAttrLinks.filter((link: any) => link.driver_id === row.id);
+        return selectedAttributes.every(attrId => links.some((link: any) => link.attribute_id === attrId));
+      });
+    }
+
     return data;
-  }, [reportData, searchQuery, dateFrom, dateTo, cityFilter, statusFilter, selectedAttributes, vehicleAttrLinks, reportType]);
+  }, [reportData, searchQuery, dateFrom, dateTo, cityFilter, statusFilter, selectedAttributes, vehicleAttrLinks, driverAttrLinks, reportType]);
 
   const { currentPage, setCurrentPage, totalPages, paginatedData, startIndex, endIndex, totalItems } = usePagination(filteredData, { pageSize: 10 });
 
-  // Chart data generation
   const chartData = useMemo(() => {
     if (!chartField) return [];
     const counts: Record<string, number> = {};
@@ -177,9 +218,7 @@ export default function Reports() {
       const val = row[chartField] || "Tyhjä";
       counts[val] = (counts[val] || 0) + 1;
     });
-    return Object.entries(counts)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
+    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [filteredData, chartField]);
 
   const exportCSV = () => {
@@ -189,7 +228,7 @@ export default function Reports() {
       columns.map((c) => {
         const val = row[c];
         if (val === null || val === undefined) return "";
-        if (c === "created_at" || c === "incident_date") {
+        if (c.includes("_at") || c === "incident_date" || c === "valid_from" || c === "valid_until") {
           try { return format(new Date(val), "d.M.yyyy HH:mm", { locale: fi }); } catch { return val; }
         }
         return String(val).replace(/;/g, ",");
@@ -239,6 +278,7 @@ export default function Reports() {
 
   const hasActiveFilters = searchQuery || dateFrom || dateTo || cityFilter || statusFilter || selectedAttributes.length > 0;
   const availableChartFields = chartFields[reportType] || [];
+  const currentAttributes = reportType === "vehicles" ? vehicleAttributes : reportType === "drivers" ? driverAttributes : [];
 
   return (
     <DashboardLayout>
@@ -285,7 +325,7 @@ export default function Reports() {
                   <Label>Saakka</Label>
                   <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-40" />
                 </div>
-                {(reportType === "vehicles" || reportType === "drivers") && uniqueCities.length > 0 && (
+                {uniqueCities.length > 0 && (
                   <div className="space-y-1">
                     <Label>Kaupunki</Label>
                     <Select value={cityFilter || "all"} onValueChange={(v) => setCityFilter(v === "all" ? "" : v)}>
@@ -297,25 +337,24 @@ export default function Reports() {
                     </Select>
                   </div>
                 )}
-                {(reportType === "vehicles" || reportType === "drivers" || reportType === "hardware") && (
+                {uniqueStatuses.length > 0 && (
                   <div className="space-y-1">
                     <Label>Tila</Label>
                     <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
                       <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Kaikki</SelectItem>
-                        <SelectItem value="active">Aktiivinen</SelectItem>
-                        <SelectItem value="removed">Poistettu</SelectItem>
+                        {uniqueStatuses.map((s) => <SelectItem key={String(s)} value={String(s)}>{String(s)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                 )}
               </div>
-              {reportType === "vehicles" && vehicleAttributes.length > 0 && (
+              {currentAttributes.length > 0 && (
                 <div>
                   <Label className="mb-2 block">Suodata attribuuteilla</Label>
                   <div className="flex flex-wrap gap-3">
-                    {vehicleAttributes.map((attr: any) => (
+                    {currentAttributes.map((attr: any) => (
                       <div key={attr.id} className="flex items-center gap-2">
                         <Checkbox
                           id={`report-attr-${attr.id}`}
@@ -365,7 +404,7 @@ export default function Reports() {
                             <TableRow key={i}>
                               {columns.map((col) => (
                                 <TableCell key={col} className="max-w-[200px] truncate">
-                                  {col === "created_at" || col === "incident_date"
+                                  {col.includes("_at") || col === "incident_date" || col === "valid_from" || col === "valid_until"
                                     ? (row[col] ? format(new Date(row[col]), "d.M.yyyy HH:mm", { locale: fi }) : "—")
                                     : (row[col] ?? "—")}
                                 </TableCell>
@@ -438,15 +477,9 @@ export default function Reports() {
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
                         <RechartsPie>
-                          <Pie
-                            data={chartData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={true}
+                          <Pie data={chartData} cx="50%" cy="50%" labelLine={true}
                             label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                            outerRadius={140}
-                            dataKey="value"
-                          >
+                            outerRadius={140} dataKey="value">
                             {chartData.map((_, index) => (
                               <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                             ))}
