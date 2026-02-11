@@ -53,6 +53,8 @@ const FINNISH_PROVINCES = [
   "Keski-Pohjanmaa", "Pohjois-Pohjanmaa", "Kainuu", "Lappi", "Ahvenanmaa",
 ];
 
+// Note: municipalities are fetched from DB below
+
 interface Driver {
   id: string;
   driver_number: string;
@@ -143,6 +145,16 @@ export default function Drivers() {
         .from("companies")
         .select("id, name")
         .order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch municipalities from DB
+  const { data: municipalities = [] } = useQuery({
+    queryKey: ["municipalities"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("municipalities").select("name, province").order("name");
       if (error) throw error;
       return data;
     },
@@ -484,12 +496,21 @@ export default function Drivers() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="city">Kaupunki</Label>
-                    <Input
-                      id="city"
-                      value={form.city}
-                      onChange={(e) => setForm({ ...form, city: e.target.value })}
-                      placeholder="Helsinki"
-                    />
+                    <Select
+                      value={form.city || "none"}
+                      onValueChange={(value) => {
+                        const muni = municipalities.find((m: any) => m.name === value);
+                        setForm({ ...form, city: value === "none" ? "" : value, province: muni?.province || form.province });
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Valitse kaupunki" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Ei valittu</SelectItem>
+                        {municipalities.map((m: any) => (
+                          <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="space-y-2">

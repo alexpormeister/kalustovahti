@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Car, Users, Building2, Settings, LogOut, Tag,
-  Smartphone, ClipboardCheck, ShieldCheck, FileCheck, ChevronDown, Map,
-  Wrench, FileSpreadsheet, Layers,
+  Smartphone, ClipboardCheck, ShieldCheck, FileCheck, ChevronDown,
+  Wrench, FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions, PageKey } from "@/hooks/usePermissions";
@@ -35,7 +35,6 @@ const navigationGroups: NavigationGroup[] = [
       { name: "Autot", href: "/kalusto", icon: Car, pageKey: "kalusto" },
       { name: "Kuljettajat", href: "/kuljettajat", icon: Users, pageKey: "kuljettajat" },
       { name: "Laitevarasto", href: "/laitteet", icon: Smartphone, pageKey: "laitteet" },
-      { name: "Karttanäkymä", href: "/kartta", icon: Map, pageKey: "kalusto" },
     ],
   },
   {
