@@ -348,9 +348,9 @@ export default function CompanyProfile() {
         </Dialog>
 
         <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-          <DialogContent className="max-w-4xl h-[80vh]">
-            <DialogHeader><DialogTitle>Dokumentin esikatselu</DialogTitle></DialogHeader>
-            {previewUrl && <iframe src={previewUrl} className="w-full h-full rounded-lg border" title="PDF Preview" />}
+          <DialogContent className="max-w-4xl h-[80vh] flex flex-col">
+            <DialogHeader className="flex-shrink-0"><DialogTitle>Dokumentin esikatselu</DialogTitle></DialogHeader>
+            {previewUrl && <iframe src={previewUrl} className="w-full flex-1 min-h-0 rounded-lg border" title="PDF Preview" />}
           </DialogContent>
         </Dialog>
       </div>
