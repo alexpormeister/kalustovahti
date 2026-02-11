@@ -58,15 +58,16 @@ interface PagePermission {
 const pageLabels: Record<string, string> = {
   dashboard: "Hallintapaneeli",
   autoilijat: "Autoilijat",
-  dokumentit: "Dokumentit",
   kalusto: "Autot",
-  laitteet: "Laitevarasto",
   kuljettajat: "Kuljettajat",
-  varustelu: "Attribuutit",
+  laitteet: "Laitevarasto",
+  dokumentit: "Dokumentit",
   laadunvalvonta: "Laadunvalvonta",
+  raportit: "Raportit",
   asetukset: "Asetukset",
   kayttajat: "Käyttäjät",
-  raportit: "Raportit",
+  yllapito: "Ylläpito",
+  roolit: "Roolien hallinta",
 };
 
 const allPages = Object.keys(pageLabels);
