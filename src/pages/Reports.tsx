@@ -21,6 +21,7 @@ import { format } from "date-fns";
 import { fi } from "date-fns/locale";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/ui/PaginationControls";
+import { ProtectedPage } from "@/components/auth/ProtectedPage";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart as RechartsPie, Pie, Cell, Legend,
@@ -282,6 +283,7 @@ export default function Reports() {
   const currentAttributes = reportType === "vehicles" ? vehicleAttributes : reportType === "drivers" ? driverAttributes : [];
 
   return (
+    <ProtectedPage pageKey="raportit">
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -519,5 +521,6 @@ export default function Reports() {
         </Tabs>
       </div>
     </DashboardLayout>
+    </ProtectedPage>
   );
 }
