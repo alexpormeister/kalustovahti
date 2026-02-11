@@ -1,31 +1,68 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Car, History, Tag, User, Building2, Smartphone, CreditCard } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Car, History, Tag, User, Building2, Smartphone, CreditCard, Pencil, Save, X } from "lucide-react";
 import { format } from "date-fns";
 import { fi } from "date-fns/locale";
+import { toast } from "sonner";
 
 export default function VehicleProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
 
   const { data: vehicle, isLoading } = useQuery({
     queryKey: ["vehicle", id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("vehicles")
-        .select("*, company:companies(name), driver:drivers!vehicles_assigned_driver_id_fkey(full_name)")
+        .select("*, company:companies(name), driver:drivers!vehicles_assigned_driver_id_fkey(full_name), fleet:fleets(name)")
         .eq("id", id)
         .single();
       if (error) throw error;
       return data;
     },
     enabled: !!id,
+  });
+
+  const { data: companies = [] } = useQuery({
+    queryKey: ["companies-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("companies").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: fleets = [] } = useQuery({
+    queryKey: ["fleets"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("fleets").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: municipalities = [] } = useQuery({
+    queryKey: ["municipalities"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("municipalities").select("name").order("name");
+      if (error) throw error;
+      return data;
+    },
   });
 
   const { data: attributes = [] } = useQuery({
@@ -44,10 +81,7 @@ export default function VehicleProfile() {
   const { data: devices = [] } = useQuery({
     queryKey: ["vehicle-devices", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("hardware_devices")
-        .select("*")
-        .eq("vehicle_id", id);
+      const { data, error } = await supabase.from("hardware_devices").select("*").eq("vehicle_id", id);
       if (error) throw error;
       return data;
     },
@@ -58,17 +92,55 @@ export default function VehicleProfile() {
     queryKey: ["vehicle-audit-logs", id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("audit_logs")
-        .select("*")
-        .eq("table_name", "vehicles")
-        .eq("record_id", id)
-        .order("created_at", { ascending: false })
-        .limit(20);
+        .from("audit_logs").select("*")
+        .eq("table_name", "vehicles").eq("record_id", id)
+        .order("created_at", { ascending: false }).limit(20);
       if (error) throw error;
       return data;
     },
     enabled: !!id,
   });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const { error } = await supabase.from("vehicles").update({
+        registration_number: data.registration_number,
+        vehicle_number: data.vehicle_number,
+        brand: data.brand,
+        model: data.model,
+        status: data.status,
+        company_id: data.company_id || null,
+        fleet_id: data.fleet_id || null,
+        payment_terminal_id: data.payment_terminal_id || null,
+        meter_serial_number: data.meter_serial_number || null,
+        city: data.city || null,
+      }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicle", id] });
+      toast.success("Ajoneuvo päivitetty");
+      setIsEditing(false);
+    },
+    onError: () => toast.error("Virhe päivitettäessä"),
+  });
+
+  const startEditing = () => {
+    if (!vehicle) return;
+    setEditForm({
+      registration_number: vehicle.registration_number,
+      vehicle_number: vehicle.vehicle_number,
+      brand: vehicle.brand,
+      model: vehicle.model,
+      status: vehicle.status,
+      company_id: vehicle.company_id || "",
+      fleet_id: vehicle.fleet_id || "",
+      payment_terminal_id: vehicle.payment_terminal_id || "",
+      meter_serial_number: vehicle.meter_serial_number || "",
+      city: (vehicle as any).city || "",
+    });
+    setIsEditing(true);
+  };
 
   const getChangedFields = (oldData: any, newData: any) => {
     if (!oldData || !newData) return [];
@@ -82,13 +154,8 @@ export default function VehicleProfile() {
     return changes;
   };
 
-  if (isLoading) {
-    return <DashboardLayout><div className="flex items-center justify-center h-96 text-muted-foreground">Ladataan...</div></DashboardLayout>;
-  }
-
-  if (!vehicle) {
-    return <DashboardLayout><div className="flex flex-col items-center justify-center h-96 gap-4"><p className="text-muted-foreground">Ajoneuvoa ei löytynyt</p><Button onClick={() => navigate("/kalusto")}><ArrowLeft className="h-4 w-4 mr-2" />Takaisin</Button></div></DashboardLayout>;
-  }
+  if (isLoading) return <DashboardLayout><div className="flex items-center justify-center h-96 text-muted-foreground">Ladataan...</div></DashboardLayout>;
+  if (!vehicle) return <DashboardLayout><div className="flex flex-col items-center justify-center h-96 gap-4"><p className="text-muted-foreground">Ajoneuvoa ei löytynyt</p><Button onClick={() => navigate("/kalusto")}><ArrowLeft className="h-4 w-4 mr-2" />Takaisin</Button></div></DashboardLayout>;
 
   return (
     <DashboardLayout>
@@ -97,7 +164,7 @@ export default function VehicleProfile() {
           <Button variant="ghost" size="icon" onClick={() => navigate("/kalusto")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold text-foreground">{vehicle.registration_number}</h1>
             <p className="text-muted-foreground">Auto #{vehicle.vehicle_number} — {vehicle.brand} {vehicle.model}</p>
           </div>
@@ -117,28 +184,80 @@ export default function VehicleProfile() {
           <TabsContent value="info">
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Car className="h-5 w-5 text-primary" />
-                  Ajoneuvon tiedot
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Car className="h-5 w-5 text-primary" />
+                    Ajoneuvon tiedot
+                  </CardTitle>
+                  {!isEditing ? (
+                    <Button variant="outline" size="sm" onClick={startEditing}><Pencil className="h-4 w-4 mr-1" />Muokkaa</Button>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}><X className="h-4 w-4 mr-1" />Peruuta</Button>
+                      <Button size="sm" onClick={() => updateMutation.mutate(editForm)} disabled={updateMutation.isPending}><Save className="h-4 w-4 mr-1" />Tallenna</Button>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
-                <div><p className="text-sm text-muted-foreground">Rekisterinumero</p><p className="font-medium font-mono">{vehicle.registration_number}</p></div>
-                <div><p className="text-sm text-muted-foreground">Autonumero</p><p className="font-medium">{vehicle.vehicle_number}</p></div>
-                <div><p className="text-sm text-muted-foreground">Merkki / Malli</p><p className="font-medium">{vehicle.brand} {vehicle.model}</p></div>
-                <div className="flex items-center gap-3">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <div><p className="text-sm text-muted-foreground">Yritys</p><p className="font-medium">{(vehicle as any).company?.name || "—"}</p></div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div><p className="text-sm text-muted-foreground">Kuljettaja</p><p className="font-medium">{(vehicle as any).driver?.full_name || "—"}</p></div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
-                  <div><p className="text-sm text-muted-foreground">Maksupääte-ID</p><p className="font-medium font-mono">{vehicle.payment_terminal_id || "—"}</p></div>
-                </div>
-                <div><p className="text-sm text-muted-foreground">Mittarin sarjanumero</p><p className="font-medium font-mono">{vehicle.meter_serial_number || "—"}</p></div>
+                {isEditing ? (
+                  <>
+                    <div><Label>Rekisterinumero</Label><Input value={editForm.registration_number} onChange={(e) => setEditForm({ ...editForm, registration_number: e.target.value.toUpperCase() })} /></div>
+                    <div><Label>Autonumero</Label><Input value={editForm.vehicle_number} onChange={(e) => setEditForm({ ...editForm, vehicle_number: e.target.value })} /></div>
+                    <div><Label>Merkki</Label><Input value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} /></div>
+                    <div><Label>Malli</Label><Input value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} /></div>
+                    <div><Label>Yritys</Label>
+                      <Select value={editForm.company_id || "none"} onValueChange={(v) => setEditForm({ ...editForm, company_id: v === "none" ? "" : v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Ei yritystä</SelectItem>
+                          {companies.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label>Fleetti</Label>
+                      <Select value={editForm.fleet_id || "none"} onValueChange={(v) => setEditForm({ ...editForm, fleet_id: v === "none" ? "" : v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Ei fleettiä</SelectItem>
+                          {fleets.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label>Kaupunki</Label>
+                      <Select value={editForm.city || "none"} onValueChange={(v) => setEditForm({ ...editForm, city: v === "none" ? "" : v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Ei kaupunkia</SelectItem>
+                          {municipalities.map((m: any) => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label>Tila</Label>
+                      <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Aktiivinen</SelectItem>
+                          <SelectItem value="removed">Poistettu</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label>Maksupääte-ID</Label><Input value={editForm.payment_terminal_id} onChange={(e) => setEditForm({ ...editForm, payment_terminal_id: e.target.value })} /></div>
+                    <div><Label>Mittarin sarjanumero</Label><Input value={editForm.meter_serial_number} onChange={(e) => setEditForm({ ...editForm, meter_serial_number: e.target.value })} /></div>
+                  </>
+                ) : (
+                  <>
+                    <div><p className="text-sm text-muted-foreground">Rekisterinumero</p><p className="font-medium font-mono">{vehicle.registration_number}</p></div>
+                    <div><p className="text-sm text-muted-foreground">Autonumero</p><p className="font-medium">{vehicle.vehicle_number}</p></div>
+                    <div><p className="text-sm text-muted-foreground">Merkki / Malli</p><p className="font-medium">{vehicle.brand} {vehicle.model}</p></div>
+                    <div className="flex items-center gap-3"><Building2 className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Yritys</p><p className="font-medium">{(vehicle as any).company?.name || "—"}</p></div></div>
+                    <div className="flex items-center gap-3"><User className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Kuljettaja</p><p className="font-medium">{(vehicle as any).driver?.full_name || "—"}</p></div></div>
+                    <div><p className="text-sm text-muted-foreground">Fleetti</p><p className="font-medium">{(vehicle as any).fleet?.name || "—"}</p></div>
+                    <div><p className="text-sm text-muted-foreground">Kaupunki</p><p className="font-medium">{(vehicle as any).city || "—"}</p></div>
+                    <div className="flex items-center gap-3"><CreditCard className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Maksupääte-ID</p><p className="font-medium font-mono">{vehicle.payment_terminal_id || "—"}</p></div></div>
+                    <div><p className="text-sm text-muted-foreground">Mittarin sarjanumero</p><p className="font-medium font-mono">{vehicle.meter_serial_number || "—"}</p></div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -147,9 +266,7 @@ export default function VehicleProfile() {
             <Card className="glass-card">
               <CardHeader><CardTitle className="flex items-center gap-2"><Tag className="h-5 w-5 text-primary" />Varustelu</CardTitle></CardHeader>
               <CardContent>
-                {attributes.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">Ei varustelua</p>
-                ) : (
+                {attributes.length === 0 ? <p className="text-muted-foreground text-center py-4">Ei varustelua</p> : (
                   <div className="flex flex-wrap gap-2">{attributes.map((a: any) => <Badge key={a.id} variant="secondary">{a.name}</Badge>)}</div>
                 )}
               </CardContent>
@@ -160,16 +277,11 @@ export default function VehicleProfile() {
             <Card className="glass-card">
               <CardHeader><CardTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" />Liitetyt laitteet</CardTitle></CardHeader>
               <CardContent>
-                {devices.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">Ei laitteita</p>
-                ) : (
+                {devices.length === 0 ? <p className="text-muted-foreground text-center py-4">Ei laitteita</p> : (
                   <div className="space-y-2">
                     {devices.map((d: any) => (
                       <div key={d.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <p className="font-medium">{d.device_type}</p>
-                          <p className="text-sm text-muted-foreground font-mono">{d.serial_number}</p>
-                        </div>
+                        <div><p className="font-medium">{d.device_type}</p><p className="text-sm text-muted-foreground font-mono">{d.serial_number}</p></div>
                         <Badge variant="outline">{d.status}</Badge>
                       </div>
                     ))}
@@ -183,9 +295,7 @@ export default function VehicleProfile() {
             <Card className="glass-card">
               <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5 text-primary" />Muutoshistoria</CardTitle></CardHeader>
               <CardContent>
-                {auditLogs.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">Ei lokimerkintöjä</p>
-                ) : (
+                {auditLogs.length === 0 ? <p className="text-muted-foreground text-center py-4">Ei lokimerkintöjä</p> : (
                   <div className="space-y-2">
                     {auditLogs.map((log: any) => {
                       const changes = getChangedFields(log.old_data, log.new_data);

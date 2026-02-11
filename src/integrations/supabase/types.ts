@@ -596,6 +596,27 @@ export type Database = {
           },
         ]
       }
+      municipalities: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          province: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          province?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          province?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -868,6 +889,7 @@ export type Database = {
         Row: {
           assigned_driver_id: string | null
           brand: string
+          city: string | null
           company_id: string | null
           created_at: string
           fleet_id: string | null
@@ -883,6 +905,7 @@ export type Database = {
         Insert: {
           assigned_driver_id?: string | null
           brand: string
+          city?: string | null
           company_id?: string | null
           created_at?: string
           fleet_id?: string | null
@@ -898,6 +921,7 @@ export type Database = {
         Update: {
           assigned_driver_id?: string | null
           brand?: string
+          city?: string | null
           company_id?: string | null
           created_at?: string
           fleet_id?: string | null
