@@ -294,7 +294,7 @@ export default function UserManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-      toast.success("Käyttäjä luotu onnistuneesti! Käyttäjä saa sähköpostin tunnuksistaan.");
+      toast.success("Käyttäjä luotu onnistuneesti! Käyttäjä voi kirjautua sisään välittömästi.");
       setIsAddUserDialogOpen(false);
       setNewUserData({ email: "", password: "", full_name: "", role: "support" });
     },

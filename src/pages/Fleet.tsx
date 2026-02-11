@@ -301,7 +301,7 @@ export default function Fleet() {
     totalItems,
   } = usePagination(filteredVehicles);
 
-  const VehicleForm = () => (
+  const vehicleFormJSX = (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -477,7 +477,7 @@ export default function Fleet() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Kalustolista</h1>
+            <h1 className="text-3xl font-bold text-foreground">Autot</h1>
             <p className="text-muted-foreground mt-1">
               Kaikki ajoneuvot ja niiden varustelu
             </p>
@@ -493,7 +493,7 @@ export default function Fleet() {
               <DialogHeader>
                 <DialogTitle>Lisää uusi ajoneuvo</DialogTitle>
               </DialogHeader>
-              <VehicleForm />
+              {vehicleFormJSX}
             </DialogContent>
           </Dialog>
         </div>
@@ -675,7 +675,7 @@ export default function Fleet() {
                 Muokkaa ajoneuvoa: {selectedVehicle?.registration_number}
               </DialogTitle>
             </DialogHeader>
-            <VehicleForm />
+            {vehicleFormJSX}
           </DialogContent>
         </Dialog>
       </div>

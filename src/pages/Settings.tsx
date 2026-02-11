@@ -6,12 +6,13 @@ import { ProfileSettings } from "@/components/settings/ProfileSettings";
 import { SystemSettings } from "@/components/settings/SystemSettings";
 import { DataImportExport } from "@/components/settings/DataImportExport";
 import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
+import { DeviceTypeManager } from "@/components/settings/DeviceTypeManager";
+import { DocumentTypeManager } from "@/components/settings/DocumentTypeManager";
 
 export default function Settings() {
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Check if current user is admin
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -38,16 +39,17 @@ export default function Settings() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Profile Settings */}
           <ProfileSettings />
-
-          {/* System Settings */}
           <SystemSettings isAdmin={isAdmin} />
-
-          {/* Data Import/Export */}
+          
+          {isAdmin && (
+            <>
+              <DeviceTypeManager />
+              <DocumentTypeManager />
+            </>
+          )}
+          
           <DataImportExport isAdmin={isAdmin} />
-
-          {/* Audit Log Viewer */}
           <AuditLogViewer isAdmin={isAdmin} />
         </div>
       </div>

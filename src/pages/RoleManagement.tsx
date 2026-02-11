@@ -59,7 +59,7 @@ const pageLabels: Record<string, string> = {
   dashboard: "Hallintapaneeli",
   autoilijat: "Autoilijat",
   dokumentit: "Dokumentit",
-  kalusto: "Kalustolista",
+  kalusto: "Autot",
   laitteet: "Laitevarasto",
   kuljettajat: "Kuljettajat",
   varustelu: "Attribuutit",
