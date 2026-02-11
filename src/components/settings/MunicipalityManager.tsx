@@ -10,10 +10,25 @@ import { Plus, Trash2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 const FINNISH_PROVINCES = [
-  "Uusimaa", "Varsinais-Suomi", "Satakunta", "Kanta-Häme", "Pirkanmaa",
-  "Päijät-Häme", "Kymenlaakso", "Etelä-Karjala", "Etelä-Savo", "Pohjois-Savo",
-  "Pohjois-Karjala", "Keski-Suomi", "Etelä-Pohjanmaa", "Pohjanmaa",
-  "Keski-Pohjanmaa", "Pohjois-Pohjanmaa", "Kainuu", "Lappi", "Ahvenanmaa",
+  "Uusimaa",
+  "Varsinais-Suomi",
+  "Satakunta",
+  "Kanta-Häme",
+  "Pirkanmaa",
+  "Päijät-Häme",
+  "Kymenlaakso",
+  "Etelä-Karjala",
+  "Etelä-Savo",
+  "Pohjois-Savo",
+  "Pohjois-Karjala",
+  "Keski-Suomi",
+  "Etelä-Pohjanmaa",
+  "Pohjanmaa",
+  "Keski-Pohjanmaa",
+  "Pohjois-Pohjanmaa",
+  "Kainuu",
+  "Lappi",
+  "Ahvenanmaa",
 ];
 
 export function MunicipalityManager() {
@@ -24,10 +39,7 @@ export function MunicipalityManager() {
   const { data: municipalities = [] } = useQuery({
     queryKey: ["municipalities"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("municipalities")
-        .select("*")
-        .order("name");
+      const { data, error } = await supabase.from("municipalities").select("*").order("name");
       if (error) throw error;
       return data;
     },
@@ -72,27 +84,13 @@ export function MunicipalityManager() {
       <CardContent className="space-y-4">
         <div className="flex gap-2">
           <div className="flex-1">
-            <Input
-              placeholder="Kunnan nimi"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
-          </div>
-          <div className="w-40">
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={newProvince}
-              onChange={(e) => setNewProvince(e.target.value)}
-            >
-              <option value="">Maakunta</option>
-              {FINNISH_PROVINCES.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+            <Input placeholder="Kunnan nimi" value={newName} onChange={(e) => setNewName(e.target.value)} />
           </div>
           <Button
             size="icon"
-            onClick={() => { if (newName.trim()) createMutation.mutate(); }}
+            onClick={() => {
+              if (newName.trim()) createMutation.mutate();
+            }}
             disabled={!newName.trim() || createMutation.isPending}
           >
             <Plus className="h-4 w-4" />
@@ -112,9 +110,7 @@ export function MunicipalityManager() {
               </Button>
             </Badge>
           ))}
-          {municipalities.length === 0 && (
-            <p className="text-sm text-muted-foreground">Ei kuntia</p>
-          )}
+          {municipalities.length === 0 && <p className="text-sm text-muted-foreground">Ei kuntia</p>}
         </div>
       </CardContent>
     </Card>
