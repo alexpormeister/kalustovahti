@@ -94,6 +94,19 @@ export default function Partners() {
     },
   });
 
+  // Fetch vehicles for cross-search by vehicle number
+  const { data: companyVehicles = [] } = useQuery({
+    queryKey: ["company-vehicles-search"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vehicles")
+        .select("vehicle_number, registration_number, company_id")
+        .not("company_id", "is", null);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: auditLogs = [] } = useQuery({
     queryKey: ["audit-logs", selectedCompany?.id],
     queryFn: async () => {
@@ -231,12 +244,27 @@ export default function Partners() {
     }
   };
 
-  const filteredCompanies = companies.filter(
-    (company) =>
-      company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      company.business_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      company.contact_person?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCompanies = companies.filter((company) => {
+    const query = searchQuery.toLowerCase();
+    if (!query) return true;
+    // Direct field matches
+    const directMatch =
+      company.name.toLowerCase().includes(query) ||
+      company.business_id?.toLowerCase().includes(query) ||
+      company.contact_person?.toLowerCase().includes(query) ||
+      company.contact_email?.toLowerCase().includes(query) ||
+      company.contact_phone?.toLowerCase().includes(query) ||
+      company.address?.toLowerCase().includes(query);
+    if (directMatch) return true;
+    // Vehicle cross-search
+    const vehicleMatch = companyVehicles.some(
+      (v) => v.company_id === company.id && (
+        v.vehicle_number.toLowerCase().includes(query) ||
+        v.registration_number.toLowerCase().includes(query)
+      )
+    );
+    return vehicleMatch;
+  });
 
   const {
     currentPage,
@@ -390,7 +418,7 @@ export default function Partners() {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Hae nimellä, Y-tunnuksella tai yhteyshenkilöllä..."
+              placeholder="Hae nimellä, Y-tunnuksella, yhteyshenkilöllä, autonumerolla, osoitteella..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
