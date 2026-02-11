@@ -158,9 +158,20 @@ export default function UserManagement() {
     if (!roleDescriptions[key]) roleDescriptions[key] = defaultRoleDescriptions[key] || val;
   });
 
+  // Fetch user emails from admin API
+  const { data: emailMap = {} } = useQuery({
+    queryKey: ["admin-user-emails"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("admin-list-users");
+      if (error) throw error;
+      return (data?.emails || {}) as Record<string, string>;
+    },
+    enabled: isSystemAdmin,
+  });
+
   // Fetch all users with their roles
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ["admin-users"],
+    queryKey: ["admin-users", emailMap],
     queryFn: async () => {
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
@@ -179,6 +190,7 @@ export default function UserManagement() {
 
       return profiles.map((p: any) => ({
         ...p,
+        email: emailMap[p.id] || "",
         role: rolesMap.get(p.id) || "support",
       })) as UserProfile[];
     },
@@ -206,7 +218,8 @@ export default function UserManagement() {
   const filteredUsers = users.filter((user) =>
     user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.driver_number?.toLowerCase().includes(searchQuery.toLowerCase())
+    user.driver_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const updateUserMutation = useMutation({
@@ -224,7 +237,7 @@ export default function UserManagement() {
 
       const { error: roleError } = await supabase
         .from("user_roles")
-        .update({ role: newRole } as any)
+        .update({ role: newRole })
         .eq("user_id", userId);
       
       if (roleError) throw roleError;
@@ -512,7 +525,8 @@ export default function UserManagement() {
                         <div className="flex items-center gap-4">
                           <div>
                             <p className="font-medium">{user.full_name || "Ei nimeä"}</p>
-                            {user.phone && <p className="text-sm text-muted-foreground">{user.phone}</p>}
+                            {user.email && <p className="text-sm text-muted-foreground">{user.email}</p>}
+                            {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
                           </div>
                           <Badge className={user.role ? roleColors[user.role as AppRole] : ""}>
                             {user.role ? roleLabels[user.role as AppRole] : "—"}
