@@ -556,7 +556,7 @@ export default function UserManagement() {
                         <div className="flex items-center gap-4">
                           <div>
                             <p className="font-medium">{user.full_name || "Ei nimeä"}</p>
-                            <p className="text-sm text-muted-foreground">{user.phone || "—"}</p>
+                            {user.phone && <p className="text-sm text-muted-foreground">{user.phone}</p>}
                           </div>
                           <Badge className={user.role ? roleColors[user.role as AppRole] : ""}>
                             {user.role ? roleLabels[user.role as AppRole] : "—"}

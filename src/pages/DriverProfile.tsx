@@ -109,7 +109,7 @@ export default function DriverProfile() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
-      const { error } = await supabase.from("drivers").update({
+      const updateData: any = {
         full_name: data.full_name,
         driver_number: data.driver_number,
         phone: data.phone || null,
@@ -119,7 +119,12 @@ export default function DriverProfile() {
         company_id: data.company_id || null,
         status: data.status,
         notes: data.notes || null,
-      }).eq("id", id);
+      };
+      // Only include SSN if provided in edit form
+      if (data.ssn_encrypted !== undefined) {
+        updateData.ssn_encrypted = data.ssn_encrypted || null;
+      }
+      const { error } = await supabase.from("drivers").update(updateData).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -173,6 +178,7 @@ export default function DriverProfile() {
       city: driver.city || "", province: driver.province || "",
       company_id: driver.company_id || "", status: driver.status,
       notes: driver.notes || "",
+      ssn_encrypted: driver.ssn_encrypted || "",
     });
     setIsEditing(true);
   };
@@ -301,6 +307,7 @@ export default function DriverProfile() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="sm:col-span-2"><Label>Henkilötunnus (HETU)</Label><Input value={editForm.ssn_encrypted || ""} onChange={(e) => setEditForm({ ...editForm, ssn_encrypted: e.target.value })} placeholder="120190-123A" /></div>
                   </>
                 ) : (
                   <>

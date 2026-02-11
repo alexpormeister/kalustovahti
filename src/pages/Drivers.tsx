@@ -219,7 +219,7 @@ export default function Drivers() {
           company_id: formData.company_id || null,
           province: formData.province || null,
           city: formData.city || null,
-          ssn_encrypted: formData.ssn_encrypted || null,
+          // SSN not editable from list - only from driver profile
         })
         .eq("id", editingId);
 
@@ -504,16 +504,18 @@ export default function Drivers() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ssn">Henkilötunnus (HETU)</Label>
-                  <Input
-                    id="ssn"
-                    value={form.ssn_encrypted}
-                    onChange={(e) => setForm({ ...form, ssn_encrypted: e.target.value })}
-                    placeholder="120190-123A"
-                  />
-                  <p className="text-xs text-muted-foreground">Muoto: PPKKVV-XXXC (uudet välimerkit tuettu)</p>
-                </div>
+                {isCreating && (
+                  <div className="space-y-2">
+                    <Label htmlFor="ssn">Henkilötunnus (HETU)</Label>
+                    <Input
+                      id="ssn"
+                      value={form.ssn_encrypted}
+                      onChange={(e) => setForm({ ...form, ssn_encrypted: e.target.value })}
+                      placeholder="120190-123A"
+                    />
+                    <p className="text-xs text-muted-foreground">Muoto: PPKKVV-XXXC (uudet välimerkit tuettu)</p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="notes">Muistiinpanot</Label>
                   <Textarea

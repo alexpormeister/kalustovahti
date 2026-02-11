@@ -7,6 +7,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions, PageKey } from "@/hooks/usePermissions";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 
 interface NavigationItem {
   name: string;
@@ -53,6 +56,16 @@ const navigationGroups: NavigationGroup[] = [
   },
 ];
 
+const roleLabels: Record<string, string> = {
+  system_admin: "Pääkäyttäjä",
+  contract_manager: "Sopimushallinta",
+  hardware_ops: "Laitehallinta",
+  support: "Asiakaspalvelu",
+  admin: "Admin",
+  manager: "Manageri",
+  driver: "Kuljettaja",
+};
+
 interface SidebarProps {
   onLogout?: () => void;
   onNavigate?: () => void;
@@ -71,6 +84,24 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
       }
     });
     return initial;
+  });
+
+  // Fetch current user profile and role
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-user-sidebar"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const [profileRes, roleRes] = await Promise.all([
+        supabase.from("profiles").select("full_name").eq("id", user.id).single(),
+        supabase.from("user_roles").select("role").eq("user_id", user.id).single(),
+      ]);
+      return {
+        name: profileRes.data?.full_name || user.email?.split("@")[0] || "Käyttäjä",
+        role: roleRes.data?.role || "user",
+      };
+    },
+    staleTime: 5 * 60 * 1000,
   });
 
   const toggleGroup = (label: string) => {
@@ -99,9 +130,17 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar-primary">
               <Car className="h-5 w-5 text-sidebar-primary-foreground" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-sidebar-primary">Kalustovahti</span>
-              <span className="text-xs text-sidebar-foreground/60">Kumppanihallinta</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold text-sidebar-primary truncate">Kalustovahti</span>
+              {currentUser ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-sidebar-foreground/80 truncate">{currentUser.name}</span>
+                  <span className="text-[10px] text-sidebar-foreground/50">•</span>
+                  <span className="text-[10px] text-sidebar-foreground/50 truncate">{roleLabels[currentUser.role] || currentUser.role}</span>
+                </div>
+              ) : (
+                <span className="text-xs text-sidebar-foreground/60">Kumppanihallinta</span>
+              )}
             </div>
           </div>
         )}
