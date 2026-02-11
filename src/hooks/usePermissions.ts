@@ -8,11 +8,12 @@ export type PageKey =
   | "kalusto"
   | "laitteet"
   | "kuljettajat"
-  | "varustelu"
   | "laadunvalvonta"
   | "asetukset"
   | "kayttajat"
-  | "raportit";
+  | "raportit"
+  | "yllapito"
+  | "roolit";
 
 interface PagePermission {
   can_view: boolean;
@@ -34,11 +35,12 @@ const allPages: PageKey[] = [
   "kalusto",
   "laitteet",
   "kuljettajat",
-  "varustelu",
   "laadunvalvonta",
   "asetukset",
   "kayttajat",
   "raportit",
+  "yllapito",
+  "roolit",
 ];
 
 export function usePermissions(): UserPermissions {
