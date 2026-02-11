@@ -66,6 +66,7 @@ const pageLabels: Record<string, string> = {
   laadunvalvonta: "Laadunvalvonta",
   asetukset: "Asetukset",
   kayttajat: "Käyttäjät",
+  raportit: "Raportit",
 };
 
 const allPages = Object.keys(pageLabels);

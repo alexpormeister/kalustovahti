@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Car, Users, Building2, Settings, LogOut, Tag,
   Smartphone, ClipboardCheck, ShieldCheck, FileCheck, ChevronDown, Map,
+  Wrench, FileSpreadsheet, Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions, PageKey } from "@/hooks/usePermissions";
@@ -42,6 +43,7 @@ const navigationGroups: NavigationGroup[] = [
       { name: "Dokumentit", href: "/dokumentit", icon: FileCheck, pageKey: "dokumentit" },
       { name: "Attribuutit", href: "/varustelu", icon: Tag, pageKey: "varustelu" },
       { name: "Laadunvalvonta", href: "/laadunvalvonta", icon: ClipboardCheck, pageKey: "laadunvalvonta" },
+      { name: "Raportit", href: "/raportit", icon: FileSpreadsheet, pageKey: "dashboard" },
     ],
   },
   {
@@ -65,7 +67,6 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
     const initial = new Set<string>();
     navigationGroups.forEach((g) => {
       if (g.label && g.defaultCollapsed) {
-        // Only collapse if user is NOT on a page in this group
         const isOnGroupPage = g.items.some((item) => location.pathname === item.href || location.pathname.startsWith(item.href + "/"));
         if (!isOnGroupPage) initial.add(g.label);
       }
@@ -156,6 +157,10 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
 
           {isSystemAdmin && (
             <div className="pt-2 border-t border-sidebar-border mt-2">
+              <Link to="/yllapito" onClick={handleNavClick} className={cn("sidebar-nav-item", location.pathname === "/yllapito" && "sidebar-nav-item-active")}>
+                <Wrench className="h-5 w-5" />
+                <span className="font-medium">Ylläpito</span>
+              </Link>
               <Link to="/roolit" onClick={handleNavClick} className={cn("sidebar-nav-item", location.pathname === "/roolit" && "sidebar-nav-item-active")}>
                 <ShieldCheck className="h-5 w-5" />
                 <span className="font-medium">Roolien hallinta</span>
