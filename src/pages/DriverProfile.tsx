@@ -114,13 +114,12 @@ export default function DriverProfile() {
         driver_number: data.driver_number,
         phone: data.phone || null,
         email: data.email || null,
-        city: data.city || null,
-        province: data.province || null,
+        city: data.municipalities ? data.municipalities.join(", ") : null,
+        province: null,
         company_id: data.company_id || null,
         status: data.status,
         notes: data.notes || null,
       };
-      // Only include SSN if provided in edit form
       if (data.ssn_encrypted !== undefined) {
         updateData.ssn_encrypted = data.ssn_encrypted || null;
       }
@@ -175,7 +174,7 @@ export default function DriverProfile() {
     setEditForm({
       full_name: driver.full_name, driver_number: driver.driver_number,
       phone: driver.phone || "", email: driver.email || "",
-      city: driver.city || "", province: driver.province || "",
+      municipalities: driver.city ? driver.city.split(", ").filter(Boolean) : [],
       company_id: driver.company_id || "", status: driver.status,
       notes: driver.notes || "",
       ssn_encrypted: driver.ssn_encrypted || "",
@@ -183,9 +182,14 @@ export default function DriverProfile() {
     setIsEditing(true);
   };
 
-  const handleCityChange = (city: string) => {
-    const muni = municipalities.find((m: any) => m.name === city);
-    setEditForm({ ...editForm, city: city === "none" ? "" : city, province: muni?.province || editForm.province });
+  const handleAddMunicipality = (name: string) => {
+    if (name !== "none" && !editForm.municipalities?.includes(name)) {
+      setEditForm({ ...editForm, municipalities: [...(editForm.municipalities || []), name] });
+    }
+  };
+
+  const handleRemoveMunicipality = (name: string) => {
+    setEditForm({ ...editForm, municipalities: (editForm.municipalities || []).filter((m: string) => m !== name) });
   };
 
   const handleRevealSSN = async () => {
@@ -279,12 +283,22 @@ export default function DriverProfile() {
                     <div><Label>Kuljettajanumero</Label><Input value={editForm.driver_number} onChange={(e) => setEditForm({ ...editForm, driver_number: e.target.value })} /></div>
                     <div><Label>Puhelin</Label><Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} /></div>
                     <div><Label>Sähköposti</Label><Input value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></div>
-                    <div><Label>Kaupunki</Label>
-                      <Select value={editForm.city || "none"} onValueChange={handleCityChange}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                    <div><Label>Kunnat</Label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {(editForm.municipalities || []).map((m: string) => (
+                          <Badge key={m} variant="secondary" className="gap-1">
+                            {m}
+                            <button type="button" className="ml-1 hover:text-destructive" onClick={() => handleRemoveMunicipality(m)}>×</button>
+                          </Badge>
+                        ))}
+                      </div>
+                      <Select value="none" onValueChange={handleAddMunicipality}>
+                        <SelectTrigger><SelectValue placeholder="Lisää kunta" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="none">Ei valittu</SelectItem>
-                          {municipalities.map((m: any) => <SelectItem key={m.name} value={m.name}>{m.name}</SelectItem>)}
+                          <SelectItem value="none">Valitse kunta</SelectItem>
+                          {municipalities.filter((m: any) => !(editForm.municipalities || []).includes(m.name)).map((m: any) => (
+                            <SelectItem key={m.name} value={m.name}>{m.name}{m.province ? ` (${m.province})` : ""}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -313,7 +327,7 @@ export default function DriverProfile() {
                   <>
                     <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Puhelin</p><p className="font-medium">{driver.phone || "—"}</p></div></div>
                     <div className="flex items-center gap-3"><Mail className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Sähköposti</p><p className="font-medium">{driver.email || "—"}</p></div></div>
-                    <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Sijainti</p><p className="font-medium">{driver.city ? `${driver.city}, ${driver.province}` : "—"}</p></div></div>
+                    <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Kunnat</p><p className="font-medium">{driver.city || "—"}</p></div></div>
                     <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Ammattiajon voimassaolo</p><p className="font-medium">{driver.driver_license_valid_until ? format(new Date(driver.driver_license_valid_until), "d.M.yyyy", { locale: fi }) : "—"}</p></div></div>
                     <div className="flex items-center gap-3"><Shield className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Henkilötunnus (HETU)</p><div className="flex items-center gap-2"><p className="font-medium font-mono">{showSSN ? (driver.ssn_encrypted || "—") : maskSSN(driver.ssn_encrypted)}</p>{driver.ssn_encrypted && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRevealSSN}>{showSSN ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}</Button>}</div></div></div>
                     <div><p className="text-sm text-muted-foreground">Yritys</p><p className="font-medium">{(driver as any).company?.name || "—"}</p></div>

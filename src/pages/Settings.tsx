@@ -4,8 +4,7 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { ProfileSettings } from "@/components/settings/ProfileSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Globe, Clock, Building2 } from "lucide-react";
+import { Building2 } from "lucide-react";
 
 // Simple i18n
 const translations: Record<string, Record<string, string>> = {
@@ -69,19 +68,9 @@ const translations: Record<string, Record<string, string>> = {
 };
 
 export default function Settings() {
-  const [language, setLanguage] = useState(() => localStorage.getItem("app_language") || "fi");
-  const [timeFormat, setTimeFormat] = useState(() => localStorage.getItem("app_time_format") || "24h");
   const [companyInfo, setCompanyInfo] = useState<any>(null);
 
-  const t = translations[language] || translations.fi;
-
-  useEffect(() => {
-    localStorage.setItem("app_language", language);
-  }, [language]);
-
-  useEffect(() => {
-    localStorage.setItem("app_time_format", timeFormat);
-  }, [timeFormat]);
+  const t = translations.fi;
 
   // Load company info from localStorage (set by maintenance page)
   useEffect(() => {
@@ -101,55 +90,6 @@ export default function Settings() {
 
         <div className="grid gap-6 md:grid-cols-2">
           <ProfileSettings />
-
-          {/* Language */}
-          <Card className="glass-card">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Globe className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">{t.language}</CardTitle>
-                  <CardDescription>{t.languageDesc}</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fi">🇫🇮 {t.finnish}</SelectItem>
-                  <SelectItem value="en">🇬🇧 {t.english}</SelectItem>
-                  <SelectItem value="sv">🇸🇪 {t.swedish}</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
-
-          {/* Time format */}
-          <Card className="glass-card">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Clock className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg">{t.timezone}</CardTitle>
-                  <CardDescription>{t.timezoneDesc}</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Select value={timeFormat} onValueChange={setTimeFormat}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="24h">24h (14:30)</SelectItem>
-                  <SelectItem value="12h">12h (2:30 PM)</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
 
           {/* Company info (read-only) */}
           <Card className="glass-card md:col-span-2">

@@ -267,32 +267,19 @@ export default function UserManagement() {
 
   const createUserMutation = useMutation({
     mutationFn: async (data: typeof newUserData) => {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            full_name: data.full_name,
-          },
+      const { data: result, error } = await supabase.functions.invoke("admin-create-user", {
+        body: {
+          email: data.email,
+          password: data.password,
+          full_name: data.full_name,
+          role: data.role,
         },
       });
       
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Käyttäjän luonti epäonnistui");
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
 
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .update({ role: data.role } as any)
-        .eq("user_id", authData.user.id);
-      
-      if (roleError) {
-        const { error: insertError } = await supabase
-          .from("user_roles")
-          .insert({ user_id: authData.user.id, role: data.role } as any);
-        if (insertError) throw insertError;
-      }
-
-      return authData.user;
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
@@ -481,8 +468,8 @@ export default function UserManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(roleLabels).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                      {dbRoles.map((r) => (
+                        <SelectItem key={r.name} value={r.name}>{r.display_name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

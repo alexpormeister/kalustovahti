@@ -8,7 +8,34 @@ import { DataImportExport } from "@/components/settings/DataImportExport";
 import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
 import { FleetManager } from "@/components/settings/FleetManager";
 import { CompanyInfoManager } from "@/components/settings/CompanyInfoManager";
+import { MunicipalityManager } from "@/components/settings/MunicipalityManager";
+import { Button } from "@/components/ui/button";
+import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+
+interface CollapsibleSectionProps {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}
+
+function CollapsibleSection({ title, children, defaultOpen = false }: CollapsibleSectionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div className="md:col-span-2">
+      <Button
+        variant="ghost"
+        className="w-full justify-between mb-2 text-base font-semibold hover:bg-muted/50"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {title}
+        {isOpen ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+      </Button>
+      {isOpen && <div className="grid gap-6 md:grid-cols-2">{children}</div>}
+    </div>
+  );
+}
 
 export default function Maintenance() {
   const navigate = useNavigate();
@@ -55,12 +82,33 @@ export default function Maintenance() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <CompanyInfoManager />
-          <FleetManager />
-          <DeviceTypeManager />
-          <DocumentTypeManager />
-          <DataImportExport isAdmin={isAdmin} />
-          <AuditLogViewer isAdmin={isAdmin} />
+          <CollapsibleSection title="Yritystiedot">
+            <CompanyInfoManager />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Fleetit">
+            <FleetManager />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Laitetyypit">
+            <DeviceTypeManager />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Dokumenttityypit">
+            <DocumentTypeManager />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Kunnat">
+            <MunicipalityManager />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Data">
+            <DataImportExport isAdmin={isAdmin} />
+          </CollapsibleSection>
+
+          <CollapsibleSection title="Muutoslokit">
+            <AuditLogViewer isAdmin={isAdmin} />
+          </CollapsibleSection>
         </div>
       </div>
     </DashboardLayout>
