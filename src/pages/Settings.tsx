@@ -8,6 +8,7 @@ import { DataImportExport } from "@/components/settings/DataImportExport";
 import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
 import { DeviceTypeManager } from "@/components/settings/DeviceTypeManager";
 import { DocumentTypeManager } from "@/components/settings/DocumentTypeManager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -38,20 +39,30 @@ export default function Settings() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <ProfileSettings />
-          <SystemSettings isAdmin={isAdmin} />
-          
+        <Tabs defaultValue="general" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="general">Yleiset</TabsTrigger>
+            {isAdmin && <TabsTrigger value="maintenance">Ylläpito</TabsTrigger>}
+          </TabsList>
+
+          <TabsContent value="general" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <ProfileSettings />
+              <SystemSettings isAdmin={isAdmin} />
+            </div>
+          </TabsContent>
+
           {isAdmin && (
-            <>
-              <DeviceTypeManager />
-              <DocumentTypeManager />
-            </>
+            <TabsContent value="maintenance" className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
+                <DeviceTypeManager />
+                <DocumentTypeManager />
+                <DataImportExport isAdmin={isAdmin} />
+                <AuditLogViewer isAdmin={isAdmin} />
+              </div>
+            </TabsContent>
           )}
-          
-          <DataImportExport isAdmin={isAdmin} />
-          <AuditLogViewer isAdmin={isAdmin} />
-        </div>
+        </Tabs>
       </div>
     </DashboardLayout>
   );

@@ -461,6 +461,7 @@ export type Database = {
       }
       drivers: {
         Row: {
+          city: string | null
           company_id: string | null
           created_at: string
           driver_license_valid_until: string | null
@@ -470,10 +471,13 @@ export type Database = {
           id: string
           notes: string | null
           phone: string | null
+          province: string | null
+          ssn_encrypted: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          city?: string | null
           company_id?: string | null
           created_at?: string
           driver_license_valid_until?: string | null
@@ -483,10 +487,13 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string | null
+          province?: string | null
+          ssn_encrypted?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          city?: string | null
           company_id?: string | null
           created_at?: string
           driver_license_valid_until?: string | null
@@ -496,6 +503,8 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string | null
+          province?: string | null
+          ssn_encrypted?: string | null
           status?: string
           updated_at?: string
         }
@@ -723,6 +732,35 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      ssn_view_logs: {
+        Row: {
+          driver_id: string
+          id: string
+          viewed_at: string
+          viewed_by: string
+        }
+        Insert: {
+          driver_id: string
+          id?: string
+          viewed_at?: string
+          viewed_by: string
+        }
+        Update: {
+          driver_id?: string
+          id?: string
+          viewed_at?: string
+          viewed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ssn_view_logs_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {

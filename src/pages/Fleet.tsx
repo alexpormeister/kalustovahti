@@ -28,7 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Car, Plus, Search, Filter, X } from "lucide-react";
+import { Car, Plus, Search, Filter, X, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +61,7 @@ interface Attribute {
 }
 
 export default function Fleet() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [attributeFilters, setAttributeFilters] = useState<string[]>([]);
@@ -633,13 +635,14 @@ export default function Fleet() {
                             <StatusBadge status={vehicle.status} />
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(vehicle)}
-                            >
-                              Muokkaa
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => navigate(`/kalusto/${vehicle.id}`)} title="Avaa profiili">
+                                <ExternalLink className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(vehicle)}>
+                                Muokkaa
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
