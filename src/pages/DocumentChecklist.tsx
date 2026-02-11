@@ -91,8 +91,9 @@ export default function DocumentChecklist() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("document_types")
-        .select("id, name, is_required")
+        .select("id, name, is_required, scope")
         .eq("is_required", true)
+        .or("scope.is.null,scope.eq.company")
         .order("name");
       if (error) throw error;
       return data as DocumentType[];

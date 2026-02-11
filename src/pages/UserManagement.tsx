@@ -44,7 +44,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Users, Edit2, Trash2, UserPlus, Search, ChevronDown, History } from "lucide-react";
+import { Users, Edit2, Trash2, UserPlus, Search, ChevronDown, History, KeyRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -126,6 +126,8 @@ export default function UserManagement() {
     full_name: "",
     role: "support" as AppRole,
   });
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
 
   // Fetch available roles from the roles table
   const { data: dbRoles = [] } = useQuery({
@@ -305,6 +307,24 @@ export default function UserManagement() {
       } else {
         toast.error("Virhe luotaessa käyttäjää: " + error.message);
       }
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      const { data, error } = await supabase.functions.invoke("admin-reset-password", {
+        body: { user_id: userId, new_password: newPassword },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      toast.success("Salasana vaihdettu onnistuneesti");
+      setResetPasswordUserId(null);
+      setResetPasswordValue("");
+    },
+    onError: (error: any) => {
+      toast.error("Virhe: " + error.message);
     },
   });
 
@@ -546,6 +566,9 @@ export default function UserManagement() {
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
                             <Edit2 className="h-4 w-4" />
                           </Button>
+                          <Button variant="ghost" size="icon" onClick={() => { setResetPasswordUserId(user.id); setResetPasswordValue(""); }}>
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="icon">
@@ -658,24 +681,6 @@ export default function UserManagement() {
                   onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                 />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="driver_number">Kuljettajanumero</Label>
-                  <Input
-                    id="driver_number"
-                    value={formData.driver_number}
-                    onChange={(e) => setFormData({ ...formData, driver_number: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Puhelin</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  />
-                </div>
-              </div>
               <div>
                 <Label htmlFor="role">Rooli</Label>
                 <Select
@@ -697,6 +702,52 @@ export default function UserManagement() {
                   Peruuta
                 </Button>
                 <Button type="submit">Tallenna</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+        {/* Reset Password Dialog */}
+        <Dialog
+          open={!!resetPasswordUserId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setResetPasswordUserId(null);
+              setResetPasswordValue("");
+            }
+          }}
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Vaihda salasana</DialogTitle>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (resetPasswordValue.length < 6) {
+                  toast.error("Salasanan tulee olla vähintään 6 merkkiä");
+                  return;
+                }
+                resetPasswordMutation.mutate({ userId: resetPasswordUserId!, newPassword: resetPasswordValue });
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <Label>Uusi salasana</Label>
+                <Input
+                  type="password"
+                  value={resetPasswordValue}
+                  onChange={(e) => setResetPasswordValue(e.target.value)}
+                  placeholder="Vähintään 6 merkkiä"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setResetPasswordUserId(null)}>
+                  Peruuta
+                </Button>
+                <Button type="submit" disabled={resetPasswordMutation.isPending}>
+                  {resetPasswordMutation.isPending ? "Vaihdetaan..." : "Vaihda salasana"}
+                </Button>
               </div>
             </form>
           </DialogContent>

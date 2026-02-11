@@ -143,6 +143,7 @@ export default function CompanyProfile() {
       const { data, error } = await supabase
         .from("document_types")
         .select("*")
+        .or("scope.is.null,scope.eq.company")
         .order("is_required", { ascending: false })
         .order("name");
       if (error) throw error;
