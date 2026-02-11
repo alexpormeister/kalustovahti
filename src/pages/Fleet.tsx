@@ -553,21 +553,6 @@ export default function Fleet() {
               <SelectItem value="removed">Poistetut</SelectItem>
             </SelectContent>
           </Select>
-          {fleets.length > 0 && (
-            <Select value={fleetFilter} onValueChange={setFleetFilter}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Fleet" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Kaikki fleetit</SelectItem>
-                {fleets.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>
-                    {f.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
           <Button
             variant={showFilters ? "default" : "outline"}
             size="icon"
@@ -577,30 +562,62 @@ export default function Fleet() {
           </Button>
         </div>
 
-        {showFilters && attributes.length > 0 && (
+        {showFilters && (
           <Card className="glass-card">
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium">Suodata varustelulla</h4>
-                {attributeFilters.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={() => setAttributeFilters([])}>
-                    Tyhjennä
-                    <X className="ml-1 h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {attributes.map((attr) => (
-                  <Badge
-                    key={attr.id}
-                    variant={attributeFilters.includes(attr.id) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleAttributeFilter(attr.id)}
-                  >
-                    {attr.name}
-                  </Badge>
-                ))}
-              </div>
+            <CardContent className="pt-4 space-y-4">
+              {/* Fleet filter */}
+              {fleets.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium">Suodata fleetillä</h4>
+                    {fleetFilter !== "all" && (
+                      <Button variant="ghost" size="sm" onClick={() => setFleetFilter("all")}>
+                        Tyhjennä
+                        <X className="ml-1 h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {fleets.map((f) => (
+                      <Badge
+                        key={f.id}
+                        variant={fleetFilter === f.id ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => setFleetFilter(fleetFilter === f.id ? "all" : f.id)}
+                      >
+                        {f.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Attribute filter */}
+              {attributes.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium">Suodata varustelulla</h4>
+                    {attributeFilters.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => setAttributeFilters([])}>
+                        Tyhjennä
+                        <X className="ml-1 h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {attributes.map((attr) => (
+                      <Badge
+                        key={attr.id}
+                        variant={attributeFilters.includes(attr.id) ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => toggleAttributeFilter(attr.id)}
+                      >
+                        {attr.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

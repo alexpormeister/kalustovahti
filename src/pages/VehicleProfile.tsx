@@ -109,6 +109,15 @@ export default function VehicleProfile() {
     enabled: !!id,
   });
 
+  const { data: deviceTypes = [] } = useQuery({
+    queryKey: ["device-types"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("device_types").select("name, display_name").order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: availableDevices = [] } = useQuery({
     queryKey: ["available-devices"],
     queryFn: async () => {
@@ -435,7 +444,7 @@ export default function VehicleProfile() {
                   <div className="space-y-2">
                     {devices.map((d: any) => (
                       <div key={d.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div><p className="font-medium">{d.device_type}</p><p className="text-sm text-muted-foreground font-mono">{d.serial_number}</p></div>
+                        <div><p className="font-medium">{deviceTypes.find((dt: any) => dt.name === d.device_type)?.display_name || d.device_type}</p><p className="text-sm text-muted-foreground font-mono">{d.serial_number}</p></div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{d.status}</Badge>
                           <Button variant="ghost" size="sm" className="text-destructive" onClick={() => unlinkDeviceMutation.mutate(d.id)}>
@@ -463,13 +472,13 @@ export default function VehicleProfile() {
                       {availableDevices.map((device: any) => (
                         <CommandItem
                           key={device.id}
-                          value={`${device.device_type} ${device.serial_number}`}
+                          value={`${deviceTypes.find((dt: any) => dt.name === device.device_type)?.display_name || device.device_type} ${device.serial_number}`}
                           onSelect={() => linkDeviceMutation.mutate(device.id)}
                           className="cursor-pointer"
                         >
                           <div className="flex items-center justify-between w-full">
                             <div>
-                              <p className="font-medium">{device.device_type}</p>
+                              <p className="font-medium">{deviceTypes.find((dt: any) => dt.name === device.device_type)?.display_name || device.device_type}</p>
                               <p className="text-sm text-muted-foreground font-mono">{device.serial_number}</p>
                             </div>
                             <Plus className="h-4 w-4 text-muted-foreground" />
