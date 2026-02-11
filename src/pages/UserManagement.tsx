@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -45,8 +45,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Users, Edit2, Trash2, UserPlus, Search, ChevronDown, History, KeyRound } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fi } from "date-fns/locale";
@@ -107,9 +107,8 @@ const actionColors: Record<string, string> = {
 };
 
 export default function UserManagement() {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { isSystemAdmin } = usePermissions();
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -159,29 +158,6 @@ export default function UserManagement() {
     if (!roleDescriptions[key]) roleDescriptions[key] = defaultRoleDescriptions[key] || val;
   });
 
-  // Check if current user is admin
-  useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .single();
-        const admin = data?.role === "system_admin";
-        setIsAdmin(admin);
-        if (!admin) {
-          navigate("/asetukset");
-          toast.error("Ei käyttöoikeutta");
-        }
-      } else {
-        navigate("/auth");
-      }
-    };
-    checkAdmin();
-  }, [navigate]);
-
   // Fetch all users with their roles
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -206,7 +182,7 @@ export default function UserManagement() {
         role: rolesMap.get(p.id) || "support",
       })) as UserProfile[];
     },
-    enabled: isAdmin,
+    enabled: isSystemAdmin,
   });
 
   // Fetch user-specific audit logs
@@ -400,7 +376,7 @@ export default function UserManagement() {
     return changes;
   };
 
-  if (!isAdmin) {
+  if (!isSystemAdmin) {
     return null;
   }
 
