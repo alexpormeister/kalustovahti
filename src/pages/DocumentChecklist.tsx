@@ -255,7 +255,7 @@ export default function DocumentChecklist() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-status-active-foreground">{stats.ok}</p>
-                  <p className="text-sm text-muted-foreground">Kunnossa</p>
+                  <p className="text-sm text-muted-foreground">Kunnossa ({stats.ok})</p>
                 </div>
               </div>
             </CardContent>

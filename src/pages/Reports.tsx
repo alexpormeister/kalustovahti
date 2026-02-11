@@ -62,9 +62,9 @@ const chartFields: Record<string, { field: string; label: string }[]> = {
 };
 
 const DEFAULT_CHART_COLORS = [
-  "#6366f1", "#f59e0b", "#ef4444",
-  "#22c55e", "#3b82f6", "#a855f7",
-  "#06b6d4", "#ec4899", "#14b8a6", "#f97316",
+  "#FFDC29", "#E5C624", "#CCB01F", "#B39A1A",
+  "#FFE45C", "#FFD700", "#DAA520", "#B8860B",
+  "#FFC107", "#FF9800",
 ];
 
 export default function Reports() {

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import {
   ArrowLeft, User, FileText, Upload, Download, Eye, Calendar, History,
-  Phone, Mail, MapPin, Trash2, Shield, EyeOff, Pencil, Save, X,
+  Phone, Mail, MapPin, Trash2, Shield, EyeOff, Pencil, Save, X, Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isBefore, addDays } from "date-fns";
@@ -43,20 +43,11 @@ export default function DriverProfile() {
   const { data: driver, isLoading } = useQuery({
     queryKey: ["driver", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("drivers").select("*, company:companies(name)").eq("id", id).single();
+      const { data, error } = await supabase.from("drivers").select("*").eq("id", id).single();
       if (error) throw error;
       return data;
     },
     enabled: !!id,
-  });
-
-  const { data: companies = [] } = useQuery({
-    queryKey: ["companies-list"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("companies").select("id, name").order("name");
-      if (error) throw error;
-      return data;
-    },
   });
 
   const { data: municipalities = [] } = useQuery({
@@ -90,11 +81,20 @@ export default function DriverProfile() {
   const { data: driverAttributes = [] } = useQuery({
     queryKey: ["driver-profile-attributes", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("driver_attribute_links").select("attribute:driver_attributes(id, name)").eq("driver_id", id);
+      const { data, error } = await supabase.from("driver_attribute_links").select("id, attribute:driver_attributes(id, name)").eq("driver_id", id);
       if (error) throw error;
-      return data.map((l: any) => l.attribute);
+      return data.map((l: any) => ({ linkId: l.id, ...l.attribute }));
     },
     enabled: !!id,
+  });
+
+  const { data: allDriverAttributes = [] } = useQuery({
+    queryKey: ["all-driver-attributes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("driver_attributes").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
   });
 
   const { data: auditLogs = [] } = useQuery({
@@ -116,7 +116,6 @@ export default function DriverProfile() {
         email: data.email || null,
         city: data.municipalities ? data.municipalities.join(", ") : null,
         province: null,
-        company_id: data.company_id || null,
         status: data.status,
         notes: data.notes || null,
       };
@@ -132,6 +131,30 @@ export default function DriverProfile() {
       setIsEditing(false);
     },
     onError: () => toast.error("Virhe päivitettäessä"),
+  });
+
+  const addAttributeMutation = useMutation({
+    mutationFn: async (attributeId: string) => {
+      const { error } = await supabase.from("driver_attribute_links").insert({ driver_id: id, attribute_id: attributeId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["driver-profile-attributes", id] });
+      toast.success("Attribuutti lisätty");
+    },
+    onError: () => toast.error("Virhe lisättäessä attribuuttia"),
+  });
+
+  const removeAttributeMutation = useMutation({
+    mutationFn: async (linkId: string) => {
+      const { error } = await supabase.from("driver_attribute_links").delete().eq("id", linkId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["driver-profile-attributes", id] });
+      toast.success("Attribuutti poistettu");
+    },
+    onError: () => toast.error("Virhe poistettaessa attribuuttia"),
   });
 
   const uploadMutation = useMutation({
@@ -175,7 +198,7 @@ export default function DriverProfile() {
       full_name: driver.full_name, driver_number: driver.driver_number,
       phone: driver.phone || "", email: driver.email || "",
       municipalities: driver.city ? driver.city.split(", ").filter(Boolean) : [],
-      company_id: driver.company_id || "", status: driver.status,
+      status: driver.status,
       notes: driver.notes || "",
       ssn_encrypted: driver.ssn_encrypted || "",
     });
@@ -242,6 +265,10 @@ export default function DriverProfile() {
     expiring: "bg-status-maintenance text-status-maintenance-foreground",
   };
 
+  const availableAttributes = allDriverAttributes.filter(
+    (a: any) => !driverAttributes.some((da: any) => da.id === a.id)
+  );
+
   if (isLoading) return <DashboardLayout><div className="flex items-center justify-center h-96 text-muted-foreground">Ladataan...</div></DashboardLayout>;
   if (!driver) return <DashboardLayout><div className="flex flex-col items-center justify-center h-96 gap-4"><p className="text-muted-foreground">Kuljettajaa ei löytynyt</p><Button onClick={() => navigate("/kuljettajat")}><ArrowLeft className="h-4 w-4 mr-2" />Takaisin</Button></div></DashboardLayout>;
 
@@ -254,10 +281,9 @@ export default function DriverProfile() {
         </div>
 
         <Tabs defaultValue="info" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="info">Tiedot</TabsTrigger>
             <TabsTrigger value="documents">Dokumentit ({documents.length})</TabsTrigger>
-            <TabsTrigger value="attributes">Attribuutit</TabsTrigger>
             <TabsTrigger value="logs">Loki</TabsTrigger>
           </TabsList>
 
@@ -302,15 +328,6 @@ export default function DriverProfile() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div><Label>Yritys</Label>
-                      <Select value={editForm.company_id || "none"} onValueChange={(v) => setEditForm({ ...editForm, company_id: v === "none" ? "" : v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Ei yritystä</SelectItem>
-                          {companies.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div><Label>Tila</Label>
                       <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -330,8 +347,36 @@ export default function DriverProfile() {
                     <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Kunnat</p><p className="font-medium">{driver.city || "—"}</p></div></div>
                     <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Ammattiajon voimassaolo</p><p className="font-medium">{driver.driver_license_valid_until ? format(new Date(driver.driver_license_valid_until), "d.M.yyyy", { locale: fi }) : "—"}</p></div></div>
                     <div className="flex items-center gap-3"><Shield className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Henkilötunnus (HETU)</p><div className="flex items-center gap-2"><p className="font-medium font-mono">{showSSN ? (driver.ssn_encrypted || "—") : maskSSN(driver.ssn_encrypted)}</p>{driver.ssn_encrypted && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRevealSSN}>{showSSN ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}</Button>}</div></div></div>
-                    <div><p className="text-sm text-muted-foreground">Yritys</p><p className="font-medium">{(driver as any).company?.name || "—"}</p></div>
                   </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Attributes section in Tiedot tab */}
+            <Card className="glass-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2"><Tag className="h-5 w-5 text-primary" />Attribuutit</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {driverAttributes.length === 0 && <p className="text-muted-foreground text-sm">Ei attribuutteja</p>}
+                  {driverAttributes.map((attr: any) => (
+                    <Badge key={attr.id} variant="secondary" className="gap-1">
+                      {attr.name}
+                      <button type="button" className="ml-1 hover:text-destructive" onClick={() => removeAttributeMutation.mutate(attr.linkId)}>×</button>
+                    </Badge>
+                  ))}
+                </div>
+                {availableAttributes.length > 0 && (
+                  <Select value="none" onValueChange={(v) => { if (v !== "none") addAttributeMutation.mutate(v); }}>
+                    <SelectTrigger className="w-full sm:w-64"><SelectValue placeholder="Lisää attribuutti" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Valitse attribuutti</SelectItem>
+                      {availableAttributes.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 )}
               </CardContent>
             </Card>
@@ -368,17 +413,6 @@ export default function DriverProfile() {
                       })}
                     </TableBody>
                   </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="attributes">
-            <Card className="glass-card">
-              <CardHeader><CardTitle>Kuljettajan attribuutit</CardTitle></CardHeader>
-              <CardContent>
-                {driverAttributes.length === 0 ? <p className="text-muted-foreground text-center py-4">Ei attribuutteja</p> : (
-                  <div className="flex flex-wrap gap-2">{driverAttributes.map((attr: any) => <Badge key={attr.id} variant="secondary">{attr.name}</Badge>)}</div>
                 )}
               </CardContent>
             </Card>
