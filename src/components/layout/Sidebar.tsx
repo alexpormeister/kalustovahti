@@ -52,6 +52,8 @@ const navigationGroups: NavigationGroup[] = [
     items: [
       { name: "Asetukset", href: "/asetukset", icon: Settings, pageKey: "asetukset" },
       { name: "Käyttäjät", href: "/kayttajat", icon: Users, pageKey: "kayttajat" },
+      { name: "Ylläpito", href: "/yllapito", icon: Wrench, pageKey: "yllapito" },
+      { name: "Roolien hallinta", href: "/roolit", icon: ShieldCheck, pageKey: "roolit" },
     ],
   },
 ];
@@ -193,18 +195,6 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
             );
           })}
 
-          {isSystemAdmin && (
-            <div className="pt-2 border-t border-sidebar-border mt-2">
-              <Link to="/yllapito" onClick={handleNavClick} className={cn("sidebar-nav-item", location.pathname === "/yllapito" && "sidebar-nav-item-active")}>
-                <Wrench className="h-5 w-5" />
-                <span className="font-medium">Ylläpito</span>
-              </Link>
-              <Link to="/roolit" onClick={handleNavClick} className={cn("sidebar-nav-item", location.pathname === "/roolit" && "sidebar-nav-item-active")}>
-                <ShieldCheck className="h-5 w-5" />
-                <span className="font-medium">Roolien hallinta</span>
-              </Link>
-            </div>
-          )}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">

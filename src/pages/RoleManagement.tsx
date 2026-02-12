@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Shield, Pencil, Trash2, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { ProtectedPage } from "@/components/auth/ProtectedPage";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
@@ -85,13 +86,7 @@ export default function RoleManagement() {
     description: "",
   });
 
-  // Redirect non-admin users
-  useEffect(() => {
-    if (!permLoading && !isSystemAdmin) {
-      navigate("/dashboard");
-      toast.error("Sinulla ei ole oikeuksia tähän sivuun");
-    }
-  }, [isSystemAdmin, permLoading, navigate]);
+  // No longer redirecting - ProtectedPage handles access control
 
   // Fetch roles
   const { data: roles = [], isLoading } = useQuery({
@@ -106,7 +101,6 @@ export default function RoleManagement() {
       if (error) throw error;
       return data as Role[];
     },
-    enabled: isSystemAdmin,
   });
 
   // Fetch permissions for all roles
@@ -298,17 +292,8 @@ export default function RoleManagement() {
     });
   };
 
-  if (permLoading || !isSystemAdmin) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Ladataan...</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
+    <ProtectedPage pageKey="roolit">
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -556,5 +541,6 @@ export default function RoleManagement() {
         </Tabs>
       </div>
     </DashboardLayout>
+    </ProtectedPage>
   );
 }
