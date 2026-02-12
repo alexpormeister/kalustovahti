@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Car, Plus, Search, Filter, X, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { CompanySearchSelect } from "@/components/shared/CompanySearchSelect";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -375,21 +376,10 @@ export default function Fleet() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="company_id">Yritys</Label>
-          <Select
+          <CompanySearchSelect
             value={formData.company_id}
-            onValueChange={(value) => setFormData({ ...formData, company_id: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Valitse yritys" />
-            </SelectTrigger>
-            <SelectContent>
-              {companies.map((company) => (
-                <SelectItem key={company.id} value={company.id}>
-                  {company.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={(value) => setFormData({ ...formData, company_id: value })}
+          />
         </div>
         <div>
           <Label htmlFor="status">Tila</Label>
