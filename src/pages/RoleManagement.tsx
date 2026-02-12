@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { ProtectedPage } from "@/components/auth/ProtectedPage";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+
 
 interface Role {
   id: string;
@@ -80,6 +80,8 @@ export default function RoleManagement() {
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [localPermissions, setLocalPermissions] = useState<PagePermission[]>([]);
+  const [hasPermissionChanges, setHasPermissionChanges] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     display_name: "",
@@ -114,10 +116,16 @@ export default function RoleManagement() {
       if (error) throw error;
       return data as PagePermission[];
     },
-    enabled: isSystemAdmin,
   });
 
-  // Create role mutation
+  // Sync local permissions state when data loads
+  useEffect(() => {
+    if (allPermissions.length > 0) {
+      setLocalPermissions(allPermissions);
+      setHasPermissionChanges(false);
+    }
+  }, [allPermissions]);
+
   const createRoleMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       // Create the role
@@ -206,33 +214,33 @@ export default function RoleManagement() {
     },
   });
 
-  // Update permission mutation
-  const updatePermissionMutation = useMutation({
-    mutationFn: async ({
-      roleId,
-      pageKey,
-      canView,
-      canEdit,
-    }: {
-      roleId: string;
-      pageKey: string;
-      canView: boolean;
-      canEdit: boolean;
-    }) => {
-      const { error } = await supabase
-        .from("role_page_permissions")
-        .update({ can_view: canView, can_edit: canEdit })
-        .eq("role_id", roleId)
-        .eq("page_key", pageKey);
+  // Batch save permissions mutation
+  const savePermissionsMutation = useMutation({
+    mutationFn: async (permissions: PagePermission[]) => {
+      // Find changed permissions by comparing with original
+      const changes = permissions.filter(lp => {
+        const original = allPermissions.find(op => op.role_id === lp.role_id && op.page_key === lp.page_key);
+        return original && (original.can_view !== lp.can_view || original.can_edit !== lp.can_edit);
+      });
 
-      if (error) throw error;
+      for (const change of changes) {
+        const { error } = await supabase
+          .from("role_page_permissions")
+          .update({ can_view: change.can_view, can_edit: change.can_edit })
+          .eq("role_id", change.role_id)
+          .eq("page_key", change.page_key);
+
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["role-page-permissions"] });
       queryClient.invalidateQueries({ queryKey: ["role-permissions-all"] });
+      setHasPermissionChanges(false);
+      toast.success("Oikeudet tallennettu onnistuneesti");
     },
     onError: (error: any) => {
-      toast.error("Virhe: " + error.message);
+      toast.error("Virhe tallennettaessa: " + error.message);
     },
   });
 
@@ -259,7 +267,7 @@ export default function RoleManagement() {
   };
 
   const getPermissionForRole = (roleId: string, pageKey: string): PagePermission | undefined => {
-    return allPermissions.find(p => p.role_id === roleId && p.page_key === pageKey);
+    return localPermissions.find(p => p.role_id === roleId && p.page_key === pageKey);
   };
 
   const handlePermissionChange = (
@@ -268,28 +276,23 @@ export default function RoleManagement() {
     type: "view" | "edit",
     value: boolean
   ) => {
-    const current = getPermissionForRole(roleId, pageKey);
-    if (!current) return;
+    setLocalPermissions(prev => prev.map(p => {
+      if (p.role_id !== roleId || p.page_key !== pageKey) return p;
 
-    let newCanView = current.can_view;
-    let newCanEdit = current.can_edit;
+      let newCanView = p.can_view;
+      let newCanEdit = p.can_edit;
 
-    if (type === "view") {
-      newCanView = value;
-      // If removing view, also remove edit
-      if (!value) newCanEdit = false;
-    } else {
-      newCanEdit = value;
-      // If adding edit, also add view
-      if (value) newCanView = true;
-    }
+      if (type === "view") {
+        newCanView = value;
+        if (!value) newCanEdit = false;
+      } else {
+        newCanEdit = value;
+        if (value) newCanView = true;
+      }
 
-    updatePermissionMutation.mutate({
-      roleId,
-      pageKey,
-      canView: newCanView,
-      canEdit: newCanEdit,
-    });
+      return { ...p, can_view: newCanView, can_edit: newCanEdit };
+    }));
+    setHasPermissionChanges(true);
   };
 
   return (
@@ -535,6 +538,27 @@ export default function RoleManagement() {
                     </TableBody>
                   </Table>
                 </div>
+                {hasPermissionChanges && (
+                  <div className="flex justify-end mt-4 pt-4 border-t border-border">
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setLocalPermissions(allPermissions);
+                          setHasPermissionChanges(false);
+                        }}
+                      >
+                        Peruuta
+                      </Button>
+                      <Button
+                        onClick={() => savePermissionsMutation.mutate(localPermissions)}
+                        disabled={savePermissionsMutation.isPending}
+                      >
+                        {savePermissionsMutation.isPending ? "Tallennetaan..." : "Tallenna oikeudet"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
