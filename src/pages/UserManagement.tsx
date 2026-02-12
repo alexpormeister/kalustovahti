@@ -47,6 +47,7 @@ import {
 import { Users, Edit2, Trash2, UserPlus, Search, ChevronDown, History, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
+import { ProtectedPage } from "@/components/auth/ProtectedPage";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { fi } from "date-fns/locale";
@@ -166,7 +167,6 @@ export default function UserManagement() {
       if (error) throw error;
       return (data?.emails || {}) as Record<string, string>;
     },
-    enabled: isSystemAdmin,
   });
 
   // Fetch all users with their roles
@@ -194,7 +194,6 @@ export default function UserManagement() {
         role: rolesMap.get(p.id) || "support",
       })) as UserProfile[];
     },
-    enabled: isSystemAdmin,
   });
 
   // Fetch user-specific audit logs
@@ -382,11 +381,8 @@ export default function UserManagement() {
     return changes;
   };
 
-  if (!isSystemAdmin) {
-    return null;
-  }
-
   return (
+    <ProtectedPage pageKey="kayttajat">
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -724,5 +720,6 @@ export default function UserManagement() {
         </Dialog>
       </div>
     </DashboardLayout>
+    </ProtectedPage>
   );
 }
