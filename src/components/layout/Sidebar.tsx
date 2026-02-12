@@ -98,9 +98,17 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
         supabase.from("profiles").select("full_name").eq("id", user.id).single(),
         supabase.from("user_roles").select("role").eq("user_id", user.id).single(),
       ]);
+      const roleName = roleRes.data?.role || "user";
+      // Fetch display_name from roles table
+      const { data: roleInfo } = await supabase
+        .from("roles")
+        .select("display_name")
+        .eq("name", roleName)
+        .maybeSingle();
       return {
         name: profileRes.data?.full_name || user.email?.split("@")[0] || "Käyttäjä",
-        role: roleRes.data?.role || "user",
+        role: roleName,
+        roleDisplayName: roleInfo?.display_name || roleLabels[roleName] || roleName,
       };
     },
     staleTime: 5 * 60 * 1000,
@@ -137,7 +145,7 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
               {currentUser ? (
                 <div className="flex flex-col">
                   <span className="text-xs text-sidebar-foreground/80 truncate">{currentUser.name}</span>
-                  <span className="text-[11px] text-sidebar-foreground/60 truncate">{roleLabels[currentUser.role] || currentUser.role}</span>
+                  <span className="text-[11px] text-sidebar-foreground/60 truncate">{currentUser.roleDisplayName}</span>
                 </div>
               ) : (
                 <span className="text-xs text-sidebar-foreground/60">Kumppanihallinta</span>
