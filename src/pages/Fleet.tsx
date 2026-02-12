@@ -286,13 +286,15 @@ export default function Fleet() {
       return matchesSearch && matchesStatus && matchesCompany && matchesFleet && matchesAttributes;
     })
     .sort((a, b) => {
+      if (sortField === "vehicle_number") {
+        const aNum = parseInt(a.vehicle_number, 10) || 0;
+        const bNum = parseInt(b.vehicle_number, 10) || 0;
+        const cmp = aNum - bNum || a.vehicle_number.localeCompare(b.vehicle_number, "fi");
+        return sortDir === "asc" ? cmp : -cmp;
+      }
       let aVal = "";
       let bVal = "";
       switch (sortField) {
-        case "vehicle_number":
-          aVal = a.vehicle_number;
-          bVal = b.vehicle_number;
-          break;
         case "registration_number":
           aVal = a.registration_number;
           bVal = b.registration_number;
