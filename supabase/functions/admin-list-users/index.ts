@@ -27,14 +27,12 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", requestingUser.id)
-      .eq("role", "system_admin")
-      .maybeSingle();
+    // Check if user has 'kayttajat' page view permission
+    const { data: permData } = await supabaseAdmin
+      .rpc("get_user_page_permission", { _user_id: requestingUser.id, _page_key: "kayttajat" });
 
-    if (!roleData) {
+    const hasAccess = permData && permData.length > 0 && permData[0].can_view;
+    if (!hasAccess) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
