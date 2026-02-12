@@ -208,6 +208,21 @@ export default function Reports() {
       });
     }
 
+    // Sort numerically for vehicle_number and driver_number
+    if (reportType === "vehicles") {
+      data = [...data].sort((a: any, b: any) => {
+        const aNum = parseInt(a.vehicle_number, 10) || 0;
+        const bNum = parseInt(b.vehicle_number, 10) || 0;
+        return aNum - bNum || (a.vehicle_number || "").localeCompare(b.vehicle_number || "", "fi");
+      });
+    } else if (reportType === "drivers") {
+      data = [...data].sort((a: any, b: any) => {
+        const aNum = parseInt(a.driver_number, 10) || 0;
+        const bNum = parseInt(b.driver_number, 10) || 0;
+        return aNum - bNum || (a.driver_number || "").localeCompare(b.driver_number || "", "fi");
+      });
+    }
+
     return data;
   }, [reportData, searchQuery, dateFrom, dateTo, cityFilter, statusFilter, selectedAttributes, vehicleAttrLinks, driverAttrLinks, reportType]);
 
@@ -223,7 +238,7 @@ export default function Reports() {
     return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [filteredData, chartField]);
 
-  const exportCSV = () => {
+  const exportCSV = async () => {
     if (filteredData.length === 0) { toast.error("Ei dataa vietäväksi"); return; }
     const header = columns.map((c) => labels[c]).join(";");
     const rows = filteredData.map((row: any) =>
@@ -243,6 +258,21 @@ export default function Reports() {
     a.download = `raportti_${reportType}_${format(new Date(), "yyyy-MM-dd")}.csv`;
     a.click(); URL.revokeObjectURL(url);
     toast.success(`Raportti viety (${filteredData.length} riviä)`);
+
+    // Log report export to audit trail
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("audit_logs").insert({
+          user_id: user.id,
+          action: "export",
+          table_name: reportType,
+          record_id: "report-export",
+          description: `Raportti viety: ${reportTypes.find(r => r.value === reportType)?.label || reportType} (${filteredData.length} riviä)`,
+          new_data: { report_type: reportType, row_count: filteredData.length, filters: { searchQuery, dateFrom, dateTo, cityFilter, statusFilter } },
+        });
+      }
+    } catch (e) { /* silent */ }
   };
 
   const exportChartImage = useCallback(() => {
