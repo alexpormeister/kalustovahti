@@ -135,10 +135,9 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-semibold text-sidebar-primary truncate">Kalustovahti</span>
               {currentUser ? (
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-col">
                   <span className="text-xs text-sidebar-foreground/80 truncate">{currentUser.name}</span>
-                  <span className="text-[10px] text-sidebar-foreground/50">•</span>
-                  <span className="text-[10px] text-sidebar-foreground/50 truncate">{roleLabels[currentUser.role] || currentUser.role}</span>
+                  <span className="text-[11px] text-sidebar-foreground/60 truncate">{roleLabels[currentUser.role] || currentUser.role}</span>
                 </div>
               ) : (
                 <span className="text-xs text-sidebar-foreground/60">Kumppanihallinta</span>
