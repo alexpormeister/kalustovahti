@@ -9,7 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Car, Plus, Search, Filter, X, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { Car, Plus, Search, Filter, X, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, Check, ChevronsUpDown } from "lucide-react";
 import { CompanySearchSelect } from "@/components/shared/CompanySearchSelect";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -18,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/ui/PaginationControls";
+import { cn } from "@/lib/utils";
 
 type VehicleStatus = "active" | "removed";
 
@@ -44,6 +51,44 @@ interface Attribute {
   name: string;
 }
 
+// Device search select component
+function DeviceSearchSelect({ devices, value, onChange, placeholder, deviceType }: {
+  devices: any[]; value: string; onChange: (v: string) => void; placeholder: string; deviceType: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const availableDevices = devices.filter(d => d.device_type === deviceType && (d.status === "available" || d.serial_number === value));
+  const selected = devices.find(d => d.serial_number === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+          {value || placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Hae sarjanumerolla..." />
+          <CommandList>
+            <CommandEmpty>Ei vapaita laitteita</CommandEmpty>
+            <CommandGroup>
+              <CommandItem value="none" onSelect={() => { onChange(""); setOpen(false); }}>
+                <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />Tyhjä
+              </CommandItem>
+              {availableDevices.map(d => (
+                <CommandItem key={d.id} value={d.serial_number} onSelect={() => { onChange(d.serial_number); setOpen(false); }}>
+                  <Check className={cn("mr-2 h-4 w-4", value === d.serial_number ? "opacity-100" : "opacity-0")} />
+                  {d.serial_number} {d.status === "available" ? "(Vapaana)" : "(Nykyinen)"}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function Fleet() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,17 +102,9 @@ export default function Fleet() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [formData, setFormData] = useState({
-    registration_number: "",
-    vehicle_number: "",
-    brand: "",
-    model: "",
-    status: "active" as VehicleStatus,
-    company_id: "",
-    payment_terminal_id: "",
-    meter_serial_number: "",
-    city: "",
-    selected_attributes: [] as string[],
-    selected_fleets: [] as string[],
+    registration_number: "", vehicle_number: "", brand: "", model: "",
+    status: "active" as VehicleStatus, company_id: "", payment_terminal_id: "",
+    meter_serial_number: "", city: "", selected_attributes: [] as string[], selected_fleets: [] as string[],
   });
 
   const queryClient = useQueryClient();
@@ -80,26 +117,13 @@ export default function Fleet() {
         .select(`*, company:companies(name), driver:drivers!vehicles_assigned_driver_id_fkey(full_name)`)
         .order("vehicle_number");
       if (error) throw error;
-
       const vehicleIds = data.map((v: any) => v.id);
-
-      // Fetch attributes
-      const { data: attributeLinks } = await supabase
-        .from("vehicle_attribute_links")
-        .select("vehicle_id, attribute:vehicle_attributes(id, name)")
-        .in("vehicle_id", vehicleIds);
-
-      // Fetch fleet links
-      const { data: fleetLinks } = await supabase
-        .from("vehicle_fleet_links")
-        .select("vehicle_id, fleet:fleets(id, name)")
-        .in("vehicle_id", vehicleIds);
-
+      const { data: attributeLinks } = await supabase.from("vehicle_attribute_links").select("vehicle_id, attribute:vehicle_attributes(id, name)").in("vehicle_id", vehicleIds);
+      const { data: fleetLinks } = await supabase.from("vehicle_fleet_links").select("vehicle_id, fleet:fleets(id, name)").in("vehicle_id", vehicleIds);
       return data.map((v: any) => ({
         ...v,
-        attributes:
-          attributeLinks?.filter((link: any) => link.vehicle_id === v.id).map((link: any) => link.attribute) || [],
-        fleets: fleetLinks?.filter((link: any) => link.vehicle_id === v.id).map((link: any) => link.fleet) || [],
+        attributes: attributeLinks?.filter((l: any) => l.vehicle_id === v.id).map((l: any) => l.attribute) || [],
+        fleets: fleetLinks?.filter((l: any) => l.vehicle_id === v.id).map((l: any) => l.fleet) || [],
       })) as Vehicle[];
     },
   });
@@ -131,352 +155,162 @@ export default function Fleet() {
     },
   });
 
+  // Fetch hardware devices for payment terminal and meter search
+  const { data: hardwareDevices = [] } = useQuery({
+    queryKey: ["hardware-devices-for-fleet"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("hardware_devices").select("id, serial_number, device_type, status").order("serial_number");
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { data: newVehicle, error } = await supabase
-        .from("vehicles")
-        .insert([
-          {
-            registration_number: data.registration_number,
-            vehicle_number: data.vehicle_number,
-            brand: data.brand,
-            model: data.model,
-            status: data.status,
-            company_id: data.company_id || null,
-            payment_terminal_id: data.payment_terminal_id || null,
-            meter_serial_number: data.meter_serial_number || null,
-            city: data.city || null,
-          },
-        ])
-        .select()
-        .single();
+      const { data: newVehicle, error } = await supabase.from("vehicles").insert([{
+        registration_number: data.registration_number, vehicle_number: data.vehicle_number,
+        brand: data.brand, model: data.model, status: data.status,
+        company_id: data.company_id || null, payment_terminal_id: data.payment_terminal_id || null,
+        meter_serial_number: data.meter_serial_number || null, city: data.city || null,
+      }]).select().single();
       if (error) throw error;
-
-      // Add attribute links
-      if (data.selected_attributes.length > 0) {
-        await supabase
-          .from("vehicle_attribute_links")
-          .insert(data.selected_attributes.map((attrId) => ({ vehicle_id: newVehicle.id, attribute_id: attrId })));
-      }
-
-      // Add fleet links
-      if (data.selected_fleets.length > 0) {
-        await supabase
-          .from("vehicle_fleet_links")
-          .insert(data.selected_fleets.map((fleetId) => ({ vehicle_id: newVehicle.id, fleet_id: fleetId })));
-      }
+      if (data.selected_attributes.length > 0) await supabase.from("vehicle_attribute_links").insert(data.selected_attributes.map(a => ({ vehicle_id: newVehicle.id, attribute_id: a })));
+      if (data.selected_fleets.length > 0) await supabase.from("vehicle_fleet_links").insert(data.selected_fleets.map(f => ({ vehicle_id: newVehicle.id, fleet_id: f })));
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fleet-vehicles"] });
-      toast.success("Ajoneuvo lisätty onnistuneesti");
-      setIsAddDialogOpen(false);
-      resetForm();
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["fleet-vehicles"] }); toast.success("Ajoneuvo lisätty onnistuneesti"); setIsAddDialogOpen(false); resetForm(); },
     onError: () => toast.error("Virhe lisättäessä ajoneuvoa"),
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      const { error } = await supabase
-        .from("vehicles")
-        .update({
-          registration_number: data.registration_number,
-          vehicle_number: data.vehicle_number,
-          brand: data.brand,
-          model: data.model,
-          status: data.status,
-          company_id: data.company_id || null,
-          payment_terminal_id: data.payment_terminal_id || null,
-          meter_serial_number: data.meter_serial_number || null,
-          city: data.city || null,
-        })
-        .eq("id", id);
+      const { error } = await supabase.from("vehicles").update({
+        registration_number: data.registration_number, vehicle_number: data.vehicle_number,
+        brand: data.brand, model: data.model, status: data.status,
+        company_id: data.company_id || null, payment_terminal_id: data.payment_terminal_id || null,
+        meter_serial_number: data.meter_serial_number || null, city: data.city || null,
+      }).eq("id", id);
       if (error) throw error;
-
-      // Update attribute links
       await supabase.from("vehicle_attribute_links").delete().eq("vehicle_id", id);
-      if (data.selected_attributes.length > 0) {
-        await supabase
-          .from("vehicle_attribute_links")
-          .insert(data.selected_attributes.map((attrId) => ({ vehicle_id: id, attribute_id: attrId })));
-      }
-
-      // Update fleet links
+      if (data.selected_attributes.length > 0) await supabase.from("vehicle_attribute_links").insert(data.selected_attributes.map(a => ({ vehicle_id: id, attribute_id: a })));
       await supabase.from("vehicle_fleet_links").delete().eq("vehicle_id", id);
-      if (data.selected_fleets.length > 0) {
-        await supabase
-          .from("vehicle_fleet_links")
-          .insert(data.selected_fleets.map((fleetId) => ({ vehicle_id: id, fleet_id: fleetId })));
-      }
+      if (data.selected_fleets.length > 0) await supabase.from("vehicle_fleet_links").insert(data.selected_fleets.map(f => ({ vehicle_id: id, fleet_id: f })));
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fleet-vehicles"] });
-      toast.success("Ajoneuvo päivitetty onnistuneesti");
-      setSelectedVehicle(null);
-      resetForm();
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["fleet-vehicles"] }); toast.success("Ajoneuvo päivitetty onnistuneesti"); setSelectedVehicle(null); resetForm(); },
     onError: () => toast.error("Virhe päivitettäessä ajoneuvoa"),
   });
 
   const resetForm = () => {
-    setFormData({
-      registration_number: "",
-      vehicle_number: "",
-      brand: "",
-      model: "",
-      status: "active",
-      company_id: "",
-      payment_terminal_id: "",
-      meter_serial_number: "",
-      city: "",
-      selected_attributes: [],
-      selected_fleets: [],
-    });
+    setFormData({ registration_number: "", vehicle_number: "", brand: "", model: "", status: "active", company_id: "", payment_terminal_id: "", meter_serial_number: "", city: "", selected_attributes: [], selected_fleets: [] });
   };
 
   const handleEdit = (vehicle: Vehicle) => {
     setSelectedVehicle(vehicle);
     setFormData({
-      registration_number: vehicle.registration_number,
-      vehicle_number: vehicle.vehicle_number,
-      brand: vehicle.brand,
-      model: vehicle.model,
-      status: vehicle.status,
-      company_id: vehicle.company_id || "",
-      payment_terminal_id: vehicle.payment_terminal_id || "",
-      meter_serial_number: vehicle.meter_serial_number || "",
-      city: vehicle.city || "",
-      selected_attributes: vehicle.attributes?.map((a) => a.id) || [],
-      selected_fleets: vehicle.fleets?.map((f) => f.id) || [],
+      registration_number: vehicle.registration_number, vehicle_number: vehicle.vehicle_number,
+      brand: vehicle.brand, model: vehicle.model, status: vehicle.status,
+      company_id: vehicle.company_id || "", payment_terminal_id: vehicle.payment_terminal_id || "",
+      meter_serial_number: vehicle.meter_serial_number || "", city: vehicle.city || "",
+      selected_attributes: vehicle.attributes?.map(a => a.id) || [], selected_fleets: vehicle.fleets?.map(f => f.id) || [],
     });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedVehicle) {
-      updateMutation.mutate({ id: selectedVehicle.id, data: formData });
-    } else {
-      createMutation.mutate(formData);
-    }
+    if (selectedVehicle) updateMutation.mutate({ id: selectedVehicle.id, data: formData });
+    else createMutation.mutate(formData);
   };
 
   const toggleAttributeFilter = (attrId: string) => {
-    setAttributeFilters((prev) => (prev.includes(attrId) ? prev.filter((id) => id !== attrId) : [...prev, attrId]));
+    setAttributeFilters(prev => prev.includes(attrId) ? prev.filter(id => id !== attrId) : [...prev, attrId]);
+  };
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir(prev => prev === "asc" ? "desc" : "asc");
+    else { setSortField(field); setSortDir("asc"); }
   };
 
   const filteredVehicles = vehicles
-    .filter((vehicle) => {
+    .filter(vehicle => {
       const query = searchQuery.toLowerCase();
-      const matchesSearch =
-        vehicle.registration_number.toLowerCase().includes(query) ||
-        vehicle.vehicle_number.toLowerCase().includes(query) ||
-        vehicle.brand.toLowerCase().includes(query) ||
-        vehicle.model.toLowerCase().includes(query) ||
-        vehicle.company?.name?.toLowerCase().includes(query) ||
-        vehicle.city?.toLowerCase().includes(query) ||
-        vehicle.payment_terminal_id?.toLowerCase().includes(query) ||
-        vehicle.meter_serial_number?.toLowerCase().includes(query) ||
-        vehicle.fleets?.some((f) => f.name.toLowerCase().includes(query)) ||
-        vehicle.attributes?.some((a) => a.name.toLowerCase().includes(query));
+      const matchesSearch = vehicle.registration_number.toLowerCase().includes(query) || vehicle.vehicle_number.toLowerCase().includes(query) || vehicle.brand.toLowerCase().includes(query) || vehicle.model.toLowerCase().includes(query) || vehicle.company?.name?.toLowerCase().includes(query) || vehicle.city?.toLowerCase().includes(query) || vehicle.payment_terminal_id?.toLowerCase().includes(query) || vehicle.meter_serial_number?.toLowerCase().includes(query) || vehicle.fleets?.some(f => f.name.toLowerCase().includes(query)) || vehicle.attributes?.some(a => a.name.toLowerCase().includes(query));
       const matchesStatus = statusFilter === "all" || vehicle.status === statusFilter;
       const matchesCompany = companyFilter === "all" || vehicle.company_id === companyFilter;
-      const matchesFleet = fleetFilter === "all" || vehicle.fleets?.some((f) => f.id === fleetFilter);
-      const matchesAttributes =
-        attributeFilters.length === 0 ||
-        attributeFilters.every((filterId) => vehicle.attributes?.some((attr) => attr.id === filterId));
+      const matchesFleet = fleetFilter === "all" || vehicle.fleets?.some(f => f.id === fleetFilter);
+      const matchesAttributes = attributeFilters.length === 0 || attributeFilters.every(fId => vehicle.attributes?.some(attr => attr.id === fId));
       return matchesSearch && matchesStatus && matchesCompany && matchesFleet && matchesAttributes;
     })
     .sort((a, b) => {
       if (sortField === "vehicle_number") {
-        const aNum = parseInt(a.vehicle_number, 10) || 0;
-        const bNum = parseInt(b.vehicle_number, 10) || 0;
-        const cmp = aNum - bNum || a.vehicle_number.localeCompare(b.vehicle_number, "fi");
+        const cmp = (parseInt(a.vehicle_number, 10) || 0) - (parseInt(b.vehicle_number, 10) || 0) || a.vehicle_number.localeCompare(b.vehicle_number, "fi");
         return sortDir === "asc" ? cmp : -cmp;
       }
-      let aVal = "";
-      let bVal = "";
+      let aVal = "", bVal = "";
       switch (sortField) {
-        case "registration_number":
-          aVal = a.registration_number;
-          bVal = b.registration_number;
-          break;
-        case "brand":
-          aVal = `${a.brand} ${a.model}`;
-          bVal = `${b.brand} ${b.model}`;
-          break;
-        case "company":
-          aVal = a.company?.name || "";
-          bVal = b.company?.name || "";
-          break;
-        case "status":
-          aVal = a.status;
-          bVal = b.status;
-          break;
+        case "registration_number": aVal = a.registration_number; bVal = b.registration_number; break;
+        case "brand": aVal = `${a.brand} ${a.model}`; bVal = `${b.brand} ${b.model}`; break;
+        case "company": aVal = a.company?.name || ""; bVal = b.company?.name || ""; break;
+        case "status": aVal = a.status; bVal = b.status; break;
       }
       const cmp = aVal.localeCompare(bVal, "fi");
       return sortDir === "asc" ? cmp : -cmp;
     });
 
-  const {
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    paginatedData: paginatedVehicles,
-    startIndex,
-    endIndex,
-    totalItems,
-  } = usePagination(filteredVehicles);
+  const { currentPage, setCurrentPage, totalPages, paginatedData: paginatedVehicles, startIndex, endIndex, totalItems } = usePagination(filteredVehicles);
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3" />;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
+  };
 
   const vehicleFormJSX = (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="registration_number">Rekisterinumero *</Label>
-          <Input
-            id="registration_number"
-            value={formData.registration_number}
-            onChange={(e) => setFormData({ ...formData, registration_number: e.target.value.toUpperCase() })}
-            required
-            placeholder="ABC-123"
-          />
-        </div>
-        <div>
-          <Label htmlFor="vehicle_number">Autonumero *</Label>
-          <Input
-            id="vehicle_number"
-            value={formData.vehicle_number}
-            onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })}
-            required
-            placeholder="001"
-          />
-        </div>
+        <div><Label>Rekisterinumero *</Label><Input value={formData.registration_number} onChange={(e) => setFormData({ ...formData, registration_number: e.target.value.toUpperCase() })} required placeholder="ABC-123" /></div>
+        <div><Label>Autonumero *</Label><Input value={formData.vehicle_number} onChange={(e) => setFormData({ ...formData, vehicle_number: e.target.value })} required placeholder="001" /></div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="brand">Merkki *</Label>
-          <Input
-            id="brand"
-            value={formData.brand}
-            onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-            required
-            placeholder="Toyota"
-          />
-        </div>
-        <div>
-          <Label htmlFor="model">Malli *</Label>
-          <Input
-            id="model"
-            value={formData.model}
-            onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-            required
-            placeholder="Corolla"
-          />
-        </div>
+        <div><Label>Merkki *</Label><Input value={formData.brand} onChange={(e) => setFormData({ ...formData, brand: e.target.value })} required placeholder="Toyota" /></div>
+        <div><Label>Malli *</Label><Input value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} required placeholder="Corolla" /></div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="company_id">Yritys</Label>
-          <CompanySearchSelect
-            value={formData.company_id}
-            onChange={(value) => setFormData({ ...formData, company_id: value })}
-          />
-        </div>
-        <div>
-          <Label htmlFor="status">Tila</Label>
-          <Select
-            value={formData.status}
-            onValueChange={(value: VehicleStatus) => setFormData({ ...formData, status: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Aktiivinen</SelectItem>
-              <SelectItem value="removed">Poistettu</SelectItem>
-            </SelectContent>
+        <div><Label>Yritys</Label><CompanySearchSelect value={formData.company_id} onChange={(value) => setFormData({ ...formData, company_id: value })} /></div>
+        <div><Label>Tila</Label>
+          <Select value={formData.status} onValueChange={(value: VehicleStatus) => setFormData({ ...formData, status: value })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="active">Aktiivinen</SelectItem><SelectItem value="removed">Poistettu</SelectItem></SelectContent>
           </Select>
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <Label htmlFor="payment_terminal_id">Maksupääte-ID</Label>
-          <Input
-            id="payment_terminal_id"
-            value={formData.payment_terminal_id}
-            onChange={(e) => setFormData({ ...formData, payment_terminal_id: e.target.value })}
-            placeholder="PT-001234"
-          />
+        <div><Label>Maksupääte</Label>
+          <DeviceSearchSelect devices={hardwareDevices} value={formData.payment_terminal_id} onChange={(v) => setFormData({ ...formData, payment_terminal_id: v })} placeholder="Valitse maksupääte..." deviceType="payment_terminal" />
         </div>
-        <div>
-          <Label htmlFor="meter_serial_number">Mittarin sarjanumero</Label>
-          <Input
-            id="meter_serial_number"
-            value={formData.meter_serial_number}
-            onChange={(e) => setFormData({ ...formData, meter_serial_number: e.target.value })}
-            placeholder="SN-001234"
-          />
+        <div><Label>Mittarin sarjanumero</Label>
+          <DeviceSearchSelect devices={hardwareDevices} value={formData.meter_serial_number} onChange={(v) => setFormData({ ...formData, meter_serial_number: v })} placeholder="Valitse mittari..." deviceType="taximeter" />
         </div>
       </div>
-      <div>
-        <Label htmlFor="city">Kaupunki</Label>
-        <Input
-          id="city"
-          value={formData.city}
-          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-          placeholder="Esim. Helsinki"
-        />
-      </div>
+      <div><Label>Kaupunki</Label><Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} placeholder="Esim. Helsinki" /></div>
 
-      {/* Fleets - multiple selection */}
       {fleets.length > 0 && (
-        <div>
-          <Label>Fleetit</Label>
+        <div><Label>Fleetit</Label>
           <div className="grid grid-cols-2 gap-2 mt-2">
-            {fleets.map((fleet) => (
+            {fleets.map(fleet => (
               <div key={fleet.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`fleet-${fleet.id}`}
-                  checked={formData.selected_fleets.includes(fleet.id)}
-                  onCheckedChange={(checked) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      selected_fleets: checked
-                        ? [...prev.selected_fleets, fleet.id]
-                        : prev.selected_fleets.filter((id) => id !== fleet.id),
-                    }));
-                  }}
-                />
-                <label htmlFor={`fleet-${fleet.id}`} className="text-sm cursor-pointer">
-                  {fleet.name}
-                </label>
+                <Checkbox id={`fleet-${fleet.id}`} checked={formData.selected_fleets.includes(fleet.id)} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, selected_fleets: checked ? [...prev.selected_fleets, fleet.id] : prev.selected_fleets.filter(id => id !== fleet.id) }))} />
+                <label htmlFor={`fleet-${fleet.id}`} className="text-sm cursor-pointer">{fleet.name}</label>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Attributes */}
       {attributes.length > 0 && (
-        <div>
-          <Label>Varustelu</Label>
+        <div><Label>Varustelu</Label>
           <div className="grid grid-cols-2 gap-2 mt-2">
-            {attributes.map((attr) => (
+            {attributes.map(attr => (
               <div key={attr.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`attr-${attr.id}`}
-                  checked={formData.selected_attributes.includes(attr.id)}
-                  onCheckedChange={(checked) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      selected_attributes: checked
-                        ? [...prev.selected_attributes, attr.id]
-                        : prev.selected_attributes.filter((id) => id !== attr.id),
-                    }));
-                  }}
-                />
-                <label htmlFor={`attr-${attr.id}`} className="text-sm cursor-pointer">
-                  {attr.name}
-                </label>
+                <Checkbox id={`attr-${attr.id}`} checked={formData.selected_attributes.includes(attr.id)} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, selected_attributes: checked ? [...prev.selected_attributes, attr.id] : prev.selected_attributes.filter(id => id !== attr.id) }))} />
+                <label htmlFor={`attr-${attr.id}`} className="text-sm cursor-pointer">{attr.name}</label>
               </div>
             ))}
           </div>
@@ -484,18 +318,8 @@ export default function Fleet() {
       )}
 
       <div className="flex justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            setIsAddDialogOpen(false);
-            setSelectedVehicle(null);
-            resetForm();
-          }}
-        >
-          Peruuta
-        </Button>
-        <Button type="submit">Tallenna</Button>
+        <Button type="button" variant="outline" onClick={() => { setIsAddDialogOpen(false); setSelectedVehicle(null); resetForm(); }}>Peruuta</Button>
+        <Button type="submit">{selectedVehicle ? "Tallenna" : "Lisää"}</Button>
       </div>
     </form>
   );
@@ -504,108 +328,59 @@ export default function Fleet() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Autot</h1>
-            <p className="text-muted-foreground mt-1">Kaikki ajoneuvot ja niiden varustelu</p>
-          </div>
+          <div><h1 className="text-3xl font-bold text-foreground">Autot</h1><p className="text-muted-foreground mt-1">Hallitse ajoneuvokantaa</p></div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 w-full sm:w-auto">
-                <Plus className="h-4 w-4" />
-                Lisää ajoneuvo
-              </Button>
-            </DialogTrigger>
+            <DialogTrigger asChild><Button className="gap-2 w-full sm:w-auto"><Plus className="h-4 w-4" />Lisää ajoneuvo</Button></DialogTrigger>
             <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Lisää uusi ajoneuvo</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Lisää uusi ajoneuvo</DialogTitle></DialogHeader>
               {vehicleFormJSX}
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Search and Filters */}
+        {/* Search and filters */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Hae: rekisteri, nro, merkki, yritys, fleet, varuste, kaupunki..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder="Hae rekisterinumerolla, autonumerolla..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Tila" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Kaikki tilat</SelectItem>
-              <SelectItem value="active">Aktiiviset</SelectItem>
-              <SelectItem value="removed">Poistetut</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant={showFilters ? "default" : "outline"}
-            size="icon"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="h-4 w-4" />
-          </Button>
+          <Button variant={showFilters ? "default" : "outline"} onClick={() => setShowFilters(!showFilters)} className="gap-2"><Filter className="h-4 w-4" />Suodattimet</Button>
         </div>
 
         {showFilters && (
           <Card className="glass-card">
-            <CardContent className="pt-4 space-y-4">
-              {/* Fleet filter */}
-              {fleets.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium">Suodata fleetillä</h4>
-                    {fleetFilter !== "all" && (
-                      <Button variant="ghost" size="sm" onClick={() => setFleetFilter("all")}>
-                        Tyhjennä
-                        <X className="ml-1 h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {fleets.map((f) => (
-                      <Badge
-                        key={f.id}
-                        variant={fleetFilter === f.id ? "default" : "outline"}
-                        className="cursor-pointer"
-                        onClick={() => setFleetFilter(fleetFilter === f.id ? "all" : f.id)}
-                      >
-                        {f.name}
-                      </Badge>
-                    ))}
-                  </div>
+            <CardContent className="pt-4">
+              <div className="flex flex-wrap gap-4">
+                <div className="space-y-1"><Label>Tila</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="all">Kaikki</SelectItem><SelectItem value="active">Aktiivinen</SelectItem><SelectItem value="removed">Poistettu</SelectItem></SelectContent>
+                  </Select>
                 </div>
-              )}
-
-              {/* Attribute filter */}
-              {attributes.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium">Suodata varustelulla</h4>
-                    {attributeFilters.length > 0 && (
-                      <Button variant="ghost" size="sm" onClick={() => setAttributeFilters([])}>
-                        Tyhjennä
-                        <X className="ml-1 h-3 w-3" />
-                      </Button>
-                    )}
+                <div className="space-y-1"><Label>Yritys</Label>
+                  <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="all">Kaikki</SelectItem>{companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                {fleets.length > 0 && (
+                  <div className="space-y-1"><Label>Fleet</Label>
+                    <Select value={fleetFilter} onValueChange={setFleetFilter}>
+                      <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="all">Kaikki</SelectItem>{fleets.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {attributes.map((attr) => (
-                      <Badge
-                        key={attr.id}
-                        variant={attributeFilters.includes(attr.id) ? "default" : "outline"}
-                        className="cursor-pointer"
-                        onClick={() => toggleAttributeFilter(attr.id)}
-                      >
-                        {attr.name}
-                      </Badge>
+                )}
+              </div>
+              {attributes.length > 0 && (
+                <div className="mt-4">
+                  <Label className="mb-2 block">Varustelu</Label>
+                  <div className="flex flex-wrap gap-3">
+                    {attributes.map(attr => (
+                      <div key={attr.id} className="flex items-center gap-2">
+                        <Checkbox checked={attributeFilters.includes(attr.id)} onCheckedChange={() => toggleAttributeFilter(attr.id)} />
+                        <span className="text-sm">{attr.name}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -614,135 +389,47 @@ export default function Fleet() {
           </Card>
         )}
 
+        {/* Edit Dialog */}
+        <Dialog open={!!selectedVehicle} onOpenChange={(open) => { if (!open) { setSelectedVehicle(null); resetForm(); } }}>
+          <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Muokkaa ajoneuvoa</DialogTitle></DialogHeader>
+            {vehicleFormJSX}
+          </DialogContent>
+        </Dialog>
+
         {/* Vehicles Table */}
         <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Car className="h-5 w-5 text-primary" />
-              Ajoneuvot ({filteredVehicles.length})
-            </CardTitle>
+            <CardTitle className="flex items-center gap-2"><Car className="h-5 w-5 text-primary" />Ajoneuvot ({filteredVehicles.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Ladataan...</div>
-            ) : paginatedVehicles.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">Ei ajoneuvoja</div>
-            ) : (
+            {isLoading ? <div className="text-center py-8 text-muted-foreground">Ladataan...</div> : paginatedVehicles.length === 0 ? <div className="text-center py-8 text-muted-foreground">Ei ajoneuvoja</div> : (
               <>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        {[
-                          { key: "vehicle_number", label: "Nro" },
-                          { key: "registration_number", label: "Rekisteri" },
-                          { key: "brand", label: "Merkki/Malli" },
-                          { key: "company", label: "Yritys" },
-                        ].map(({ key, label }) => (
-                          <TableHead
-                            key={key}
-                            className="cursor-pointer select-none hover:text-foreground"
-                            onClick={() => {
-                              if (sortField === key) {
-                                setSortDir(sortDir === "asc" ? "desc" : "asc");
-                              } else {
-                                setSortField(key);
-                                setSortDir("asc");
-                              }
-                            }}
-                          >
-                            <div className="flex items-center gap-1">
-                              {label}
-                              {sortField === key ? (
-                                sortDir === "asc" ? (
-                                  <ArrowUp className="h-3 w-3" />
-                                ) : (
-                                  <ArrowDown className="h-3 w-3" />
-                                )
-                              ) : (
-                                <ArrowUpDown className="h-3 w-3 opacity-30" />
-                              )}
-                            </div>
-                          </TableHead>
-                        ))}
-                        <TableHead>Fleetit</TableHead>
-                        <TableHead>Varustelu</TableHead>
-                        <TableHead
-                          className="cursor-pointer select-none hover:text-foreground"
-                          onClick={() => {
-                            if (sortField === "status") setSortDir(sortDir === "asc" ? "desc" : "asc");
-                            else {
-                              setSortField("status");
-                              setSortDir("asc");
-                            }
-                          }}
-                        >
-                          <div className="flex items-center gap-1">
-                            Tila
-                            {sortField === "status" ? (
-                              sortDir === "asc" ? (
-                                <ArrowUp className="h-3 w-3" />
-                              ) : (
-                                <ArrowDown className="h-3 w-3" />
-                              )
-                            ) : (
-                              <ArrowUpDown className="h-3 w-3 opacity-30" />
-                            )}
-                          </div>
-                        </TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleSort("vehicle_number")}><div className="flex items-center gap-1">Nro <SortIcon field="vehicle_number" /></div></TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleSort("registration_number")}><div className="flex items-center gap-1">Rekisteri <SortIcon field="registration_number" /></div></TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleSort("brand")}><div className="flex items-center gap-1">Merkki/Malli <SortIcon field="brand" /></div></TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleSort("company")}><div className="flex items-center gap-1">Yritys <SortIcon field="company" /></div></TableHead>
+                        <TableHead>Fleet</TableHead>
+                        <TableHead className="cursor-pointer" onClick={() => toggleSort("status")}><div className="flex items-center gap-1">Tila <SortIcon field="status" /></div></TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedVehicles.map((vehicle) => (
-                        <TableRow key={vehicle.id}>
-                          <TableCell className="font-mono font-medium">{vehicle.vehicle_number}</TableCell>
-                          <TableCell className="font-mono">{vehicle.registration_number}</TableCell>
-                          <TableCell>
-                            {vehicle.brand} {vehicle.model}
-                          </TableCell>
+                      {paginatedVehicles.map(vehicle => (
+                        <TableRow key={vehicle.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/kalusto/${vehicle.id}`)}>
+                          <TableCell className="font-medium">{vehicle.vehicle_number}</TableCell>
+                          <TableCell>{vehicle.registration_number}</TableCell>
+                          <TableCell>{vehicle.brand} {vehicle.model}</TableCell>
                           <TableCell>{vehicle.company?.name || "—"}</TableCell>
+                          <TableCell>{vehicle.fleets?.map(f => <Badge key={f.id} variant="outline" className="mr-1 text-xs">{f.name}</Badge>) || "—"}</TableCell>
+                          <TableCell><StatusBadge status={vehicle.status} /></TableCell>
                           <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {vehicle.fleets && vehicle.fleets.length > 0
-                                ? vehicle.fleets.map((f) => (
-                                    <Badge key={f.id} variant="outline" className="text-xs">
-                                      {f.name}
-                                    </Badge>
-                                  ))
-                                : "—"}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {vehicle.attributes?.slice(0, 3).map((attr) => (
-                                <Badge key={attr.id} variant="secondary" className="text-xs">
-                                  {attr.name}
-                                </Badge>
-                              ))}
-                              {(vehicle.attributes?.length || 0) > 3 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{(vehicle.attributes?.length || 0) - 3}
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge status={vehicle.status} />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => navigate(`/kalusto/${vehicle.id}`)}
-                                title="Avaa profiili"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleEdit(vehicle)}>
-                                Muokkaa
-                              </Button>
+                            <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(vehicle)}><ExternalLink className="h-4 w-4" /></Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -750,36 +437,11 @@ export default function Fleet() {
                     </TableBody>
                   </Table>
                 </div>
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                  startIndex={startIndex}
-                  endIndex={endIndex}
-                  totalItems={totalItems}
-                />
+                <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} startIndex={startIndex} endIndex={endIndex} totalItems={totalItems} />
               </>
             )}
           </CardContent>
         </Card>
-
-        {/* Edit Dialog */}
-        <Dialog
-          open={!!selectedVehicle}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSelectedVehicle(null);
-              resetForm();
-            }
-          }}
-        >
-          <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Muokkaa ajoneuvoa: {selectedVehicle?.registration_number}</DialogTitle>
-            </DialogHeader>
-            {vehicleFormJSX}
-          </DialogContent>
-        </Dialog>
       </div>
     </DashboardLayout>
   );

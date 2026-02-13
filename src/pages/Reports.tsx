@@ -40,12 +40,33 @@ const reportTypes: { value: ReportType; label: string }[] = [
   { value: "audit_logs", label: "Muutoslokit" },
 ];
 
+// Translation maps for technical values
+const statusTranslations: Record<string, string> = {
+  active: "Aktiivinen", removed: "Poistettu", inactive: "Ei-aktiivinen", suspended: "Estetty",
+  available: "Vapaana", installed: "Asennettu", maintenance: "Huollossa", decommissioned: "Poistettu käytöstä",
+  expired: "Vanhentunut", pending: "Odottaa", terminated: "Päättynyt",
+  new: "Uusi", investigating: "Tutkinnassa", resolved: "Ratkaistu", closed: "Suljettu",
+};
+
+const incidentTypeTranslations: Record<string, string> = {
+  customer_complaint: "Asiakasvalitus", service_quality: "Palvelun laatu",
+  vehicle_condition: "Ajoneuvon kunto", driver_behavior: "Kuljettajan käytös",
+  safety_issue: "Turvallisuus", billing_issue: "Laskutus", other: "Muu",
+};
+
+const translateValue = (col: string, val: any): string => {
+  if (val === null || val === undefined) return "—";
+  if (col === "status" || col === "contract_status") return statusTranslations[val] || val;
+  if (col === "incident_type") return incidentTypeTranslations[val] || val;
+  return String(val);
+};
+
 const columnLabels: Record<string, Record<string, string>> = {
   vehicles: { vehicle_number: "Nro", registration_number: "Rekisteri", brand: "Merkki", model: "Malli", city: "Kaupunki", status: "Tila", created_at: "Luotu" },
-  drivers: { driver_number: "Nro", full_name: "Nimi", phone: "Puhelin", email: "Email", city: "Kaupunki", province: "Maakunta", status: "Tila" },
+  drivers: { driver_number: "Nro", full_name: "Nimi", phone: "Puhelin", email: "Email", city: "Kunta", province: "Maakunta", status: "Tila" },
   companies: { name: "Nimi", business_id: "Y-tunnus", contact_person: "Yhteyshenkilö", contact_email: "Email", contact_phone: "Puhelin", contract_status: "Sopimustila" },
   hardware: { serial_number: "Sarjanumero", device_type: "Tyyppi", status: "Tila", sim_number: "SIM", created_at: "Luotu" },
-  quality_incidents: { incident_type: "Tyyppi", status: "Tila", incident_date: "Päivä", description: "Kuvaus", source: "Lähde" },
+  quality_incidents: { incident_date: "Päivä", incident_type: "Tyyppi", vehicle_reg: "Ajoneuvo", driver_name: "Kuljettaja", description: "Kuvaus", action_taken: "Toimenpiteet", status: "Tila", handler: "Käsittelijä", company_name: "Yritys" },
   audit_logs: { table_name: "Taulu", action: "Toiminto", description: "Kuvaus", created_at: "Aika" },
   documents: { file_name: "Tiedosto", status: "Tila", valid_from: "Alkaen", valid_until: "Saakka", created_at: "Luotu" },
   fleets: { name: "Nimi", description: "Kuvaus", created_at: "Luotu" },
@@ -53,7 +74,7 @@ const columnLabels: Record<string, Record<string, string>> = {
 
 const chartFields: Record<string, { field: string; label: string }[]> = {
   vehicles: [{ field: "status", label: "Tila" }, { field: "brand", label: "Merkki" }, { field: "city", label: "Kaupunki" }],
-  drivers: [{ field: "status", label: "Tila" }, { field: "city", label: "Kaupunki" }, { field: "province", label: "Maakunta" }],
+  drivers: [{ field: "status", label: "Tila" }, { field: "city", label: "Kunta" }, { field: "province", label: "Maakunta" }],
   companies: [{ field: "contract_status", label: "Sopimustila" }],
   hardware: [{ field: "status", label: "Tila" }, { field: "device_type", label: "Tyyppi" }],
   quality_incidents: [{ field: "status", label: "Tila" }, { field: "incident_type", label: "Tyyppi" }],
@@ -73,14 +94,26 @@ export default function Reports() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [cityFilter, setCityFilter] = useState("");
+  const [cityFilters, setCityFilters] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [chartField, setChartField] = useState("");
   const [chartType, setChartType] = useState<"bar" | "pie">("bar");
   const [chartColors, setChartColors] = useState<string[]>([...DEFAULT_CHART_COLORS]);
   const chartRef = useRef<HTMLDivElement>(null);
+
+  // Fetch municipalities for driver city filter
+  const { data: municipalities = [] } = useQuery({
+    queryKey: ["municipalities-report"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("municipalities").select("name, province").order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: reportType === "drivers",
+  });
 
   const { data: reportData = [], isLoading } = useQuery({
     queryKey: ["report", reportType],
@@ -99,9 +132,38 @@ export default function Reports() {
         case "hardware":
           query = supabase.from("hardware_devices").select("serial_number, device_type, status, sim_number, created_at").order("serial_number");
           break;
-        case "quality_incidents":
-          query = supabase.from("quality_incidents").select("incident_type, status, incident_date, description, source").order("incident_date", { ascending: false });
-          break;
+        case "quality_incidents": {
+          const { data: raw, error } = await supabase
+            .from("quality_incidents")
+            .select("incident_type, status, incident_date, description, action_taken, source, created_by, updated_by, vehicle_id, driver_id")
+            .order("incident_date", { ascending: false });
+          if (error) throw error;
+          // Enrich with vehicle/driver/handler/company names
+          const enriched = await Promise.all((raw || []).map(async (r: any) => {
+            let vehicle_reg = "—", driver_name = "—", handler = "—", company_name = "—";
+            if (r.vehicle_id) {
+              const { data: v } = await supabase.from("vehicles").select("registration_number, company_id").eq("id", r.vehicle_id).single();
+              if (v) {
+                vehicle_reg = v.registration_number;
+                if (v.company_id) {
+                  const { data: c } = await supabase.from("companies").select("name").eq("id", v.company_id).single();
+                  if (c) company_name = c.name;
+                }
+              }
+            }
+            if (r.driver_id) {
+              const { data: d } = await supabase.from("drivers").select("full_name").eq("id", r.driver_id).single();
+              if (d) driver_name = d.full_name || "—";
+            }
+            const handlerId = r.updated_by || r.created_by;
+            if (handlerId) {
+              const { data: p } = await supabase.from("profiles").select("full_name").eq("id", handlerId).single();
+              if (p) handler = p.full_name || "—";
+            }
+            return { ...r, vehicle_reg, driver_name, handler, company_name };
+          }));
+          return enriched;
+        }
         case "audit_logs":
           query = supabase.from("audit_logs").select("table_name, action, description, created_at").order("created_at", { ascending: false }).limit(500);
           break;
@@ -112,74 +174,56 @@ export default function Reports() {
           query = supabase.from("fleets").select("name, description, created_at").order("name");
           break;
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+      if (reportType !== "quality_incidents") {
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+      }
+      return [];
     },
   });
 
   const { data: vehicleAttributes = [] } = useQuery({
-    queryKey: ["vehicle-attributes"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("vehicle_attributes").select("id, name").order("name");
-      if (error) throw error;
-      return data;
-    },
-    enabled: reportType === "vehicles",
+    queryKey: ["vehicle-attributes"], queryFn: async () => { const { data, error } = await supabase.from("vehicle_attributes").select("id, name").order("name"); if (error) throw error; return data; }, enabled: reportType === "vehicles",
   });
-
   const { data: vehicleAttrLinks = [] } = useQuery({
-    queryKey: ["vehicle-attr-links-report"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("vehicle_attribute_links").select("vehicle_id, attribute_id");
-      if (error) throw error;
-      return data;
-    },
-    enabled: reportType === "vehicles" && selectedAttributes.length > 0,
+    queryKey: ["vehicle-attr-links-report"], queryFn: async () => { const { data, error } = await supabase.from("vehicle_attribute_links").select("vehicle_id, attribute_id"); if (error) throw error; return data; }, enabled: reportType === "vehicles" && selectedAttributes.length > 0,
   });
-
   const { data: driverAttributes = [] } = useQuery({
-    queryKey: ["driver-attributes"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("driver_attributes").select("id, name").order("name");
-      if (error) throw error;
-      return data;
-    },
-    enabled: reportType === "drivers",
+    queryKey: ["driver-attributes"], queryFn: async () => { const { data, error } = await supabase.from("driver_attributes").select("id, name").order("name"); if (error) throw error; return data; }, enabled: reportType === "drivers",
   });
-
   const { data: driverAttrLinks = [] } = useQuery({
-    queryKey: ["driver-attr-links-report"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("driver_attribute_links").select("driver_id, attribute_id");
-      if (error) throw error;
-      return data;
-    },
-    enabled: reportType === "drivers" && selectedAttributes.length > 0,
+    queryKey: ["driver-attr-links-report"], queryFn: async () => { const { data, error } = await supabase.from("driver_attribute_links").select("driver_id, attribute_id"); if (error) throw error; return data; }, enabled: reportType === "drivers" && selectedAttributes.length > 0,
   });
 
   const columns = Object.keys(columnLabels[reportType] || {}).filter(c => c !== "id");
   const labels = columnLabels[reportType] || {};
 
   const uniqueCities = useMemo(() => {
-    if (reportType !== "vehicles" && reportType !== "drivers") return [];
+    if (reportType === "drivers") return municipalities.map((m: any) => m.name);
+    if (reportType !== "vehicles") return [];
     const cities = new Set(reportData.filter((r: any) => r.city).map((r: any) => r.city));
     return Array.from(cities).sort();
-  }, [reportData, reportType]);
+  }, [reportData, reportType, municipalities]);
 
   const uniqueStatuses = useMemo(() => {
-    const statuses = new Set(reportData.filter((r: any) => r.status).map((r: any) => r.status));
+    const field = reportType === "companies" ? "contract_status" : "status";
+    const statuses = new Set(reportData.filter((r: any) => r[field]).map((r: any) => r[field]));
     return Array.from(statuses).sort();
-  }, [reportData]);
+  }, [reportData, reportType]);
+
+  const uniqueTypes = useMemo(() => {
+    if (reportType !== "quality_incidents") return [];
+    const types = new Set(reportData.filter((r: any) => r.incident_type).map((r: any) => r.incident_type));
+    return Array.from(types).sort();
+  }, [reportData, reportType]);
 
   const filteredData = useMemo(() => {
     let data = reportData;
-
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       data = data.filter((row: any) => Object.values(row).some((v) => String(v || "").toLowerCase().includes(q)));
     }
-
     if (dateFrom || dateTo) {
       data = data.filter((row: any) => {
         const dateField = row.created_at || row.incident_date;
@@ -190,41 +234,36 @@ export default function Reports() {
         return true;
       });
     }
-
-    if (cityFilter) data = data.filter((row: any) => row.city === cityFilter);
-    if (statusFilter) data = data.filter((row: any) => row.status === statusFilter);
+    if (cityFilters.length > 0) {
+      data = data.filter((row: any) => {
+        const city = row.city || "";
+        return cityFilters.some(f => city.toLowerCase().includes(f.toLowerCase()));
+      });
+    }
+    const statusField = reportType === "companies" ? "contract_status" : "status";
+    if (statusFilter) data = data.filter((row: any) => row[statusField] === statusFilter);
+    if (typeFilter && reportType === "quality_incidents") data = data.filter((row: any) => row.incident_type === typeFilter);
 
     if (reportType === "vehicles" && selectedAttributes.length > 0) {
       data = data.filter((row: any) => {
-        const vehicleLinks = vehicleAttrLinks.filter((link: any) => link.vehicle_id === row.id);
-        return selectedAttributes.every(attrId => vehicleLinks.some((link: any) => link.attribute_id === attrId));
+        const vLinks = vehicleAttrLinks.filter((l: any) => l.vehicle_id === row.id);
+        return selectedAttributes.every(a => vLinks.some((l: any) => l.attribute_id === a));
       });
     }
-
     if (reportType === "drivers" && selectedAttributes.length > 0) {
       data = data.filter((row: any) => {
-        const links = driverAttrLinks.filter((link: any) => link.driver_id === row.id);
-        return selectedAttributes.every(attrId => links.some((link: any) => link.attribute_id === attrId));
+        const links = driverAttrLinks.filter((l: any) => l.driver_id === row.id);
+        return selectedAttributes.every(a => links.some((l: any) => l.attribute_id === a));
       });
     }
 
-    // Sort numerically for vehicle_number and driver_number
     if (reportType === "vehicles") {
-      data = [...data].sort((a: any, b: any) => {
-        const aNum = parseInt(a.vehicle_number, 10) || 0;
-        const bNum = parseInt(b.vehicle_number, 10) || 0;
-        return aNum - bNum || (a.vehicle_number || "").localeCompare(b.vehicle_number || "", "fi");
-      });
+      data = [...data].sort((a: any, b: any) => (parseInt(a.vehicle_number, 10) || 0) - (parseInt(b.vehicle_number, 10) || 0));
     } else if (reportType === "drivers") {
-      data = [...data].sort((a: any, b: any) => {
-        const aNum = parseInt(a.driver_number, 10) || 0;
-        const bNum = parseInt(b.driver_number, 10) || 0;
-        return aNum - bNum || (a.driver_number || "").localeCompare(b.driver_number || "", "fi");
-      });
+      data = [...data].sort((a: any, b: any) => (parseInt(a.driver_number, 10) || 0) - (parseInt(b.driver_number, 10) || 0));
     }
-
     return data;
-  }, [reportData, searchQuery, dateFrom, dateTo, cityFilter, statusFilter, selectedAttributes, vehicleAttrLinks, driverAttrLinks, reportType]);
+  }, [reportData, searchQuery, dateFrom, dateTo, cityFilters, statusFilter, typeFilter, selectedAttributes, vehicleAttrLinks, driverAttrLinks, reportType]);
 
   const { currentPage, setCurrentPage, totalPages, paginatedData, startIndex, endIndex, totalItems } = usePagination(filteredData, { pageSize: 10 });
 
@@ -232,7 +271,8 @@ export default function Reports() {
     if (!chartField) return [];
     const counts: Record<string, number> = {};
     filteredData.forEach((row: any) => {
-      const val = row[chartField] || "Tyhjä";
+      let val = row[chartField] || "Tyhjä";
+      val = translateValue(chartField, val);
       counts[val] = (counts[val] || 0) + 1;
     });
     return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
@@ -248,7 +288,7 @@ export default function Reports() {
         if (c.includes("_at") || c === "incident_date" || c === "valid_from" || c === "valid_until") {
           try { return format(new Date(val), "d.M.yyyy HH:mm", { locale: fi }); } catch { return val; }
         }
-        return String(val).replace(/;/g, ",");
+        return translateValue(c, val).replace(/;/g, ",");
       }).join(";")
     );
     const csv = "\uFEFF" + [header, ...rows].join("\n");
@@ -258,18 +298,13 @@ export default function Reports() {
     a.download = `raportti_${reportType}_${format(new Date(), "yyyy-MM-dd")}.csv`;
     a.click(); URL.revokeObjectURL(url);
     toast.success(`Raportti viety (${filteredData.length} riviä)`);
-
-    // Log report export to audit trail
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase.from("audit_logs").insert({
-          user_id: user.id,
-          action: "export",
-          table_name: reportType,
-          record_id: "report-export",
+          user_id: user.id, action: "export", table_name: reportType, record_id: "report-export",
           description: `Raportti viety: ${reportTypes.find(r => r.value === reportType)?.label || reportType} (${filteredData.length} riviä)`,
-          new_data: { report_type: reportType, row_count: filteredData.length, filters: { searchQuery, dateFrom, dateTo, cityFilter, statusFilter } },
+          new_data: { report_type: reportType, row_count: filteredData.length, filters: { searchQuery, dateFrom, dateTo, cityFilters, statusFilter } },
         });
       }
     } catch (e) { /* silent */ }
@@ -284,33 +319,31 @@ export default function Reports() {
     const ctx = canvas.getContext("2d");
     const img = new window.Image();
     img.onload = () => {
-      canvas.width = img.width * 2;
-      canvas.height = img.height * 2;
-      ctx!.fillStyle = "white";
-      ctx!.fillRect(0, 0, canvas.width, canvas.height);
-      ctx!.scale(2, 2);
-      ctx!.drawImage(img, 0, 0);
+      canvas.width = img.width * 2; canvas.height = img.height * 2;
+      ctx!.fillStyle = "white"; ctx!.fillRect(0, 0, canvas.width, canvas.height);
+      ctx!.scale(2, 2); ctx!.drawImage(img, 0, 0);
       canvas.toBlob((blob) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
+        const a = document.createElement("a"); a.href = url;
         a.download = `kaavio_${reportType}_${chartField}_${format(new Date(), "yyyy-MM-dd")}.png`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success("Kaavio ladattu");
+        a.click(); URL.revokeObjectURL(url); toast.success("Kaavio ladattu");
       });
     };
     img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
   }, [reportType, chartField]);
 
   const resetFilters = () => {
-    setSearchQuery(""); setDateFrom(""); setDateTo(""); setCityFilter(""); setStatusFilter(""); setSelectedAttributes([]);
+    setSearchQuery(""); setDateFrom(""); setDateTo(""); setCityFilters([]); setStatusFilter(""); setTypeFilter(""); setSelectedAttributes([]);
   };
 
-  const hasActiveFilters = searchQuery || dateFrom || dateTo || cityFilter || statusFilter || selectedAttributes.length > 0;
+  const hasActiveFilters = searchQuery || dateFrom || dateTo || cityFilters.length > 0 || statusFilter || typeFilter || selectedAttributes.length > 0;
   const availableChartFields = chartFields[reportType] || [];
   const currentAttributes = reportType === "vehicles" ? vehicleAttributes : reportType === "drivers" ? driverAttributes : [];
+
+  const toggleCityFilter = (city: string) => {
+    setCityFilters(prev => prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]);
+  };
 
   return (
     <ProtectedPage pageKey="raportit">
@@ -360,14 +393,33 @@ export default function Reports() {
                 </div>
                 {uniqueCities.length > 0 && (
                   <div className="space-y-1">
-                    <Label>Kaupunki</Label>
-                    <Select value={cityFilter || "all"} onValueChange={(v) => setCityFilter(v === "all" ? "" : v)}>
-                      <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Kaikki</SelectItem>
-                        {uniqueCities.map((c) => <SelectItem key={String(c)} value={String(c)}>{String(c)}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Label>{reportType === "drivers" ? "Kunta" : "Kaupunki"}</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-52 justify-between">
+                          {cityFilters.length > 0 ? `${cityFilters.length} valittu` : "Valitse..."}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-52 p-2 max-h-60 overflow-y-auto">
+                        {uniqueCities.map((c) => (
+                          <div key={String(c)} className="flex items-center gap-2 py-1">
+                            <Checkbox checked={cityFilters.includes(String(c))} onCheckedChange={() => toggleCityFilter(String(c))} />
+                            <span className="text-sm">{String(c)}</span>
+                          </div>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                    {cityFilters.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {cityFilters.map(c => (
+                          <Badge key={c} variant="secondary" className="gap-1 text-xs">
+                            {c}
+                            <button onClick={() => toggleCityFilter(c)} className="ml-1 hover:text-destructive">×</button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {uniqueStatuses.length > 0 && (
@@ -377,7 +429,19 @@ export default function Reports() {
                       <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Kaikki</SelectItem>
-                        {uniqueStatuses.map((s) => <SelectItem key={String(s)} value={String(s)}>{String(s)}</SelectItem>)}
+                        {uniqueStatuses.map((s) => <SelectItem key={String(s)} value={String(s)}>{statusTranslations[String(s)] || String(s)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {reportType === "quality_incidents" && uniqueTypes.length > 0 && (
+                  <div className="space-y-1">
+                    <Label>Tyyppi</Label>
+                    <Select value={typeFilter || "all"} onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}>
+                      <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Kaikki</SelectItem>
+                        {uniqueTypes.map((t) => <SelectItem key={String(t)} value={String(t)}>{incidentTypeTranslations[String(t)] || String(t)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -389,13 +453,7 @@ export default function Reports() {
                   <div className="flex flex-wrap gap-3">
                     {currentAttributes.map((attr: any) => (
                       <div key={attr.id} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`report-attr-${attr.id}`}
-                          checked={selectedAttributes.includes(attr.id)}
-                          onCheckedChange={(checked) => {
-                            setSelectedAttributes((prev) => checked ? [...prev, attr.id] : prev.filter((id) => id !== attr.id));
-                          }}
-                        />
+                        <Checkbox id={`report-attr-${attr.id}`} checked={selectedAttributes.includes(attr.id)} onCheckedChange={(checked) => setSelectedAttributes((prev) => checked ? [...prev, attr.id] : prev.filter((id) => id !== attr.id))} />
                         <label htmlFor={`report-attr-${attr.id}`} className="text-sm cursor-pointer">{attr.name}</label>
                       </div>
                     ))}
@@ -439,7 +497,7 @@ export default function Reports() {
                                 <TableCell key={col} className="max-w-[200px] truncate">
                                   {col.includes("_at") || col === "incident_date" || col === "valid_from" || col === "valid_until"
                                     ? (row[col] ? format(new Date(row[col]), "d.M.yyyy HH:mm", { locale: fi }) : "—")
-                                    : (row[col] ?? "—")}
+                                    : translateValue(col, row[col])}
                                 </TableCell>
                               ))}
                             </TableRow>
@@ -458,10 +516,7 @@ export default function Reports() {
             <Card className="glass-card">
               <CardHeader>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-primary" />
-                    Kaavio
-                  </CardTitle>
+                  <CardTitle className="flex items-center gap-2"><BarChart3 className="h-5 w-5 text-primary" />Kaavio</CardTitle>
                   <div className="flex flex-wrap gap-2 items-center">
                     <Select value={chartField || "none"} onValueChange={(v) => setChartField(v === "none" ? "" : v)}>
                       <SelectTrigger className="w-40"><SelectValue placeholder="Valitse kenttä" /></SelectTrigger>
@@ -471,19 +526,11 @@ export default function Reports() {
                       </SelectContent>
                     </Select>
                     <div className="flex border rounded-md">
-                      <Button variant={chartType === "bar" ? "default" : "ghost"} size="sm" onClick={() => setChartType("bar")} className="rounded-r-none">
-                        <BarChart3 className="h-4 w-4" />
-                      </Button>
-                      <Button variant={chartType === "pie" ? "default" : "ghost"} size="sm" onClick={() => setChartType("pie")} className="rounded-l-none">
-                        <PieChart className="h-4 w-4" />
-                      </Button>
+                      <Button variant={chartType === "bar" ? "default" : "ghost"} size="sm" onClick={() => setChartType("bar")} className="rounded-r-none"><BarChart3 className="h-4 w-4" /></Button>
+                      <Button variant={chartType === "pie" ? "default" : "ghost"} size="sm" onClick={() => setChartType("pie")} className="rounded-l-none"><PieChart className="h-4 w-4" /></Button>
                     </div>
                     {chartField && chartData.length > 0 && (
-                      <>
-                        <Button variant="outline" size="sm" onClick={exportChartImage} className="gap-1">
-                          <Image className="h-4 w-4" />Lataa kuva
-                        </Button>
-                      </>
+                      <Button variant="outline" size="sm" onClick={exportChartImage} className="gap-1"><Image className="h-4 w-4" />Lataa kuva</Button>
                     )}
                   </div>
                 </div>
@@ -498,51 +545,36 @@ export default function Reports() {
                     <div className="flex flex-wrap gap-2 mb-4">
                       {chartData.map((item, index) => (
                         <div key={item.name} className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={chartColors[index % chartColors.length]}
-                            onChange={(e) => {
-                              const newColors = [...chartColors];
-                              newColors[index] = e.target.value;
-                              setChartColors(newColors);
-                            }}
-                            className="w-6 h-6 rounded cursor-pointer border-0"
-                          />
+                          <input type="color" value={chartColors[index % chartColors.length]} onChange={(e) => { const c = [...chartColors]; c[index] = e.target.value; setChartColors(c); }} className="w-6 h-6 rounded cursor-pointer border-0" />
                           <span className="text-xs text-muted-foreground">{item.name}</span>
                         </div>
                       ))}
                     </div>
-                  <div ref={chartRef} className="w-full" style={{ height: 400 }}>
-                    {chartType === "bar" ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                          <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 12 }} />
-                          <YAxis allowDecimals={false} />
-                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                          <Bar dataKey="value" name="Määrä" radius={[4, 4, 0, 0]}>
-                            {chartData.map((_, index) => (
-                              <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPie>
-                          <Pie data={chartData} cx="50%" cy="50%" labelLine={true}
-                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                            outerRadius={140} dataKey="value">
-                            {chartData.map((_, index) => (
-                              <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                          <Legend />
-                        </RechartsPie>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
+                    <div ref={chartRef} className="w-full" style={{ height: 400 }}>
+                      {chartType === "bar" ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} tick={{ fontSize: 12 }} />
+                            <YAxis allowDecimals={false} />
+                            <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+                            <Bar dataKey="value" name="Määrä" radius={[4, 4, 0, 0]}>
+                              {chartData.map((_, index) => (<Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPie>
+                            <Pie data={chartData} cx="50%" cy="50%" labelLine={true} label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} outerRadius={140} dataKey="value">
+                              {chartData.map((_, index) => (<Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />))}
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+                            <Legend />
+                          </RechartsPie>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
                   </>
                 )}
               </CardContent>
@@ -554,3 +586,7 @@ export default function Reports() {
     </ProtectedPage>
   );
 }
+
+// Need these imports for the Popover used in city filter
+import { ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

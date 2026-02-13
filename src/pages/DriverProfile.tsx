@@ -37,6 +37,7 @@ export default function DriverProfile() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showSSN, setShowSSN] = useState(false);
+  const [decryptedSSN, setDecryptedSSN] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
 
@@ -110,14 +111,10 @@ export default function DriverProfile() {
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
       const updateData: any = {
-        full_name: data.full_name,
-        driver_number: data.driver_number,
-        phone: data.phone || null,
-        email: data.email || null,
+        full_name: data.full_name, driver_number: data.driver_number,
+        phone: data.phone || null, email: data.email || null,
         city: data.municipalities ? data.municipalities.join(", ") : null,
-        province: null,
-        status: data.status,
-        notes: data.notes || null,
+        province: null, status: data.status, notes: data.notes || null,
       };
       if (data.ssn_encrypted !== undefined) {
         updateData.ssn_encrypted = data.ssn_encrypted || null;
@@ -138,10 +135,7 @@ export default function DriverProfile() {
       const { error } = await supabase.from("driver_attribute_links").insert({ driver_id: id, attribute_id: attributeId });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["driver-profile-attributes", id] });
-      toast.success("Attribuutti lisätty");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["driver-profile-attributes", id] }); toast.success("Attribuutti lisätty"); },
     onError: () => toast.error("Virhe lisättäessä attribuuttia"),
   });
 
@@ -150,10 +144,7 @@ export default function DriverProfile() {
       const { error } = await supabase.from("driver_attribute_links").delete().eq("id", linkId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["driver-profile-attributes", id] });
-      toast.success("Attribuutti poistettu");
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["driver-profile-attributes", id] }); toast.success("Attribuutti poistettu"); },
     onError: () => toast.error("Virhe poistettaessa attribuuttia"),
   });
 
@@ -198,9 +189,8 @@ export default function DriverProfile() {
       full_name: driver.full_name, driver_number: driver.driver_number,
       phone: driver.phone || "", email: driver.email || "",
       municipalities: driver.city ? driver.city.split(", ").filter(Boolean) : [],
-      status: driver.status,
-      notes: driver.notes || "",
-      ssn_encrypted: driver.ssn_encrypted || "",
+      status: driver.status, notes: driver.notes || "",
+      ssn_encrypted: "", // Don't pre-fill encrypted value
     });
     setIsEditing(true);
   };
@@ -215,12 +205,19 @@ export default function DriverProfile() {
     setEditForm({ ...editForm, municipalities: (editForm.municipalities || []).filter((m: string) => m !== name) });
   };
 
+  // Use RPC to decrypt SSN - logs automatically to ssn_view_logs AND audit_logs
   const handleRevealSSN = async () => {
-    if (showSSN) { setShowSSN(false); return; }
-    const { data: user } = await supabase.auth.getUser();
-    if (user.user) await supabase.from("ssn_view_logs").insert({ driver_id: id, viewed_by: user.user.id } as any);
-    setShowSSN(true);
-    toast.info("HETU-tiedon katselu kirjattu lokiin");
+    if (showSSN) { setShowSSN(false); setDecryptedSSN(null); return; }
+    try {
+      const { data, error } = await supabase.rpc('get_driver_ssn', { p_driver_id: id } as any);
+      if (error) throw error;
+      setDecryptedSSN(data as string);
+      setShowSSN(true);
+      queryClient.invalidateQueries({ queryKey: ["driver-audit-logs", id] });
+      toast.info("HETU-tiedon katselu kirjattu lokiin");
+    } catch (err: any) {
+      toast.error("Virhe HETU:n purkamisessa: " + err.message);
+    }
   };
 
   const handleDownload = async (doc: any) => {
@@ -243,16 +240,17 @@ export default function DriverProfile() {
     return "active";
   };
 
-  const maskSSN = (ssn: string | null) => {
-    if (!ssn) return "—";
-    return ssn.length >= 7 ? ssn.substring(0, 7) + "****" : "****";
+  const maskSSN = (hasSSN: boolean) => {
+    if (!hasSSN) return "—";
+    if (showSSN && decryptedSSN) return decryptedSSN;
+    return "••••••-••••";
   };
 
   const getChangedFields = (oldData: any, newData: any) => {
     if (!oldData || !newData) return [];
     const changes: { field: string; oldValue: any; newValue: any }[] = [];
     Object.keys({ ...oldData, ...newData }).forEach((key) => {
-      if (key === "updated_at" || key === "created_at") return;
+      if (key === "updated_at" || key === "created_at" || key === "ssn_encrypted") return;
       if (JSON.stringify(oldData[key]) !== JSON.stringify(newData[key]))
         changes.push({ field: key, oldValue: oldData[key], newValue: newData[key] });
     });
@@ -271,6 +269,8 @@ export default function DriverProfile() {
 
   if (isLoading) return <DashboardLayout><div className="flex items-center justify-center h-96 text-muted-foreground">Ladataan...</div></DashboardLayout>;
   if (!driver) return <DashboardLayout><div className="flex flex-col items-center justify-center h-96 gap-4"><p className="text-muted-foreground">Kuljettajaa ei löytynyt</p><Button onClick={() => navigate("/kuljettajat")}><ArrowLeft className="h-4 w-4 mr-2" />Takaisin</Button></div></DashboardLayout>;
+
+  const hasSSN = !!driver.ssn_encrypted && driver.ssn_encrypted.length > 0;
 
   return (
     <DashboardLayout>
@@ -312,10 +312,7 @@ export default function DriverProfile() {
                     <div><Label>Kunnat</Label>
                       <div className="flex flex-wrap gap-2 mb-2">
                         {(editForm.municipalities || []).map((m: string) => (
-                          <Badge key={m} variant="secondary" className="gap-1">
-                            {m}
-                            <button type="button" className="ml-1 hover:text-destructive" onClick={() => handleRemoveMunicipality(m)}>×</button>
-                          </Badge>
+                          <Badge key={m} variant="secondary" className="gap-1">{m}<button type="button" className="ml-1 hover:text-destructive" onClick={() => handleRemoveMunicipality(m)}>×</button></Badge>
                         ))}
                       </div>
                       <Select value="none" onValueChange={handleAddMunicipality}>
@@ -338,7 +335,7 @@ export default function DriverProfile() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="sm:col-span-2"><Label>Henkilötunnus (HETU)</Label><Input value={editForm.ssn_encrypted || ""} onChange={(e) => setEditForm({ ...editForm, ssn_encrypted: e.target.value })} placeholder="120190-123A" /></div>
+                    <div className="sm:col-span-2"><Label>Henkilötunnus (HETU) — syötä uusi arvo päivittääksesi</Label><Input value={editForm.ssn_encrypted || ""} onChange={(e) => setEditForm({ ...editForm, ssn_encrypted: e.target.value })} placeholder="120190-123A" /></div>
                   </>
                 ) : (
                   <>
@@ -346,35 +343,36 @@ export default function DriverProfile() {
                     <div className="flex items-center gap-3"><Mail className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Sähköposti</p><p className="font-medium">{driver.email || "—"}</p></div></div>
                     <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Kunnat</p><p className="font-medium">{driver.city || "—"}</p></div></div>
                     <div className="flex items-center gap-3"><Calendar className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Ammattiajon voimassaolo</p><p className="font-medium">{driver.driver_license_valid_until ? format(new Date(driver.driver_license_valid_until), "d.M.yyyy", { locale: fi }) : "—"}</p></div></div>
-                    <div className="flex items-center gap-3"><Shield className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Henkilötunnus (HETU)</p><div className="flex items-center gap-2"><p className="font-medium font-mono">{showSSN ? (driver.ssn_encrypted || "—") : maskSSN(driver.ssn_encrypted)}</p>{driver.ssn_encrypted && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRevealSSN}>{showSSN ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}</Button>}</div></div></div>
+                    <div className="flex items-center gap-3"><Shield className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Henkilötunnus (HETU)</p><div className="flex items-center gap-2"><p className="font-medium font-mono">{maskSSN(hasSSN)}</p>{hasSSN && <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRevealSSN}>{showSSN ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}</Button>}</div></div></div>
                   </>
                 )}
               </CardContent>
             </Card>
 
-            {/* Attributes section in Tiedot tab */}
+            {/* Attributes section */}
             <Card className="glass-card">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2"><Tag className="h-5 w-5 text-primary" />Attribuutit</CardTitle>
-                </div>
+                <CardTitle className="flex items-center gap-2"><Tag className="h-5 w-5 text-primary" />Attribuutit</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  {driverAttributes.length === 0 && <p className="text-muted-foreground text-sm">Ei attribuutteja</p>}
-                  {driverAttributes.map((attr: any) => (
-                    <Badge key={attr.id} variant="secondary" className="gap-1">
-                      {attr.name}
-                      <button type="button" className="ml-1 hover:text-destructive" onClick={() => removeAttributeMutation.mutate(attr.linkId)}>×</button>
-                    </Badge>
-                  ))}
+              <CardContent>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {driverAttributes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Ei attribuutteja</p>
+                  ) : (
+                    driverAttributes.map((attr: any) => (
+                      <Badge key={attr.id} variant="secondary" className="gap-1">
+                        {attr.name}
+                        <button className="ml-1 hover:text-destructive" onClick={() => removeAttributeMutation.mutate(attr.linkId)}>×</button>
+                      </Badge>
+                    ))
+                  )}
                 </div>
                 {availableAttributes.length > 0 && (
                   <Select value="none" onValueChange={(v) => { if (v !== "none") addAttributeMutation.mutate(v); }}>
-                    <SelectTrigger className="w-full sm:w-64"><SelectValue placeholder="Lisää attribuutti" /></SelectTrigger>
+                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="Lisää attribuutti" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Valitse attribuutti</SelectItem>
-                      {availableAttributes.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                      {availableAttributes.map((a: any) => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}
                     </SelectContent>
                   </Select>
                 )}
@@ -383,29 +381,37 @@ export default function DriverProfile() {
           </TabsContent>
 
           <TabsContent value="documents" className="space-y-4">
-            <div className="flex justify-end"><Button className="gap-2" onClick={() => setIsUploadOpen(true)}><Upload className="h-4 w-4" />Lataa dokumentti</Button></div>
             <Card className="glass-card">
-              <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Kuljettajan dokumentit</CardTitle></CardHeader>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Dokumentit</CardTitle>
+                  <Button size="sm" className="gap-2" onClick={() => setIsUploadOpen(true)}><Upload className="h-4 w-4" />Lataa dokumentti</Button>
+                </div>
+              </CardHeader>
               <CardContent>
-                {documents.length === 0 ? <div className="text-center py-8 text-muted-foreground">Ei dokumentteja</div> : (
+                {documents.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground">Ei dokumentteja</p>
+                ) : (
                   <Table>
-                    <TableHeader><TableRow>
-                      <TableHead>Tyyppi</TableHead><TableHead>Tiedosto</TableHead><TableHead>Voimassa</TableHead><TableHead>Tila</TableHead><TableHead></TableHead>
-                    </TableRow></TableHeader>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tyyppi</TableHead><TableHead>Tiedosto</TableHead><TableHead>Tila</TableHead><TableHead>Voimassa</TableHead><TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
                     <TableBody>
                       {documents.map((doc: any) => {
-                        const status = getDocumentStatus(doc);
+                        const docStatus = getDocumentStatus(doc);
                         return (
                           <TableRow key={doc.id}>
-                            <TableCell className="font-medium">{doc.document_type?.name || "—"}</TableCell>
-                            <TableCell className="max-w-[200px] truncate">{doc.file_name}</TableCell>
+                            <TableCell>{doc.document_type?.name || "—"}</TableCell>
+                            <TableCell>{doc.file_name}</TableCell>
+                            <TableCell><Badge className={statusColors[docStatus]}>{docStatus === "active" ? "Voimassa" : docStatus === "expiring" ? "Vanhenee pian" : "Vanhentunut"}</Badge></TableCell>
                             <TableCell>{doc.valid_until ? format(new Date(doc.valid_until), "d.M.yyyy", { locale: fi }) : "—"}</TableCell>
-                            <TableCell><Badge className={statusColors[status]}>{status === "active" ? "Voimassa" : status === "expiring" ? "Vanhenee pian" : "Vanhentunut"}</Badge></TableCell>
                             <TableCell>
                               <div className="flex gap-1">
-                                <Button variant="ghost" size="icon" onClick={() => handlePreview(doc)}><Eye className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)}><Download className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(doc)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePreview(doc)}><Eye className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(doc)}><Download className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteMutation.mutate(doc)}><Trash2 className="h-4 w-4" /></Button>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -416,27 +422,75 @@ export default function DriverProfile() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Upload dialog */}
+            <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Lataa dokumentti</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div><Label>Dokumenttityyppi *</Label>
+                    <Select value={uploadData.document_type_id} onValueChange={(v) => setUploadData({ ...uploadData, document_type_id: v })}>
+                      <SelectTrigger><SelectValue placeholder="Valitse tyyppi" /></SelectTrigger>
+                      <SelectContent>{documentTypes.map((dt: any) => (<SelectItem key={dt.id} value={dt.id}>{dt.name}</SelectItem>))}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><Label>Voimassa alkaen</Label><Input type="date" value={uploadData.valid_from} onChange={(e) => setUploadData({ ...uploadData, valid_from: e.target.value })} /></div>
+                    <div><Label>Voimassa saakka</Label><Input type="date" value={uploadData.valid_until} onChange={(e) => setUploadData({ ...uploadData, valid_until: e.target.value })} /></div>
+                  </div>
+                  <div><Label>Tiedosto *</Label><Input type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} ref={fileInputRef} /></div>
+                  <div><Label>Muistiinpanot</Label><Input value={uploadData.notes} onChange={(e) => setUploadData({ ...uploadData, notes: e.target.value })} /></div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setIsUploadOpen(false)}>Peruuta</Button>
+                    <Button onClick={() => { if (selectedFile && uploadData.document_type_id) uploadMutation.mutate({ file: selectedFile, metadata: uploadData }); else toast.error("Valitse tyyppi ja tiedosto"); }} disabled={uploadMutation.isPending}>
+                      {uploadMutation.isPending ? "Ladataan..." : "Lataa"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Preview dialog */}
+            <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+              <DialogContent className="max-w-4xl max-h-[90vh]">
+                <DialogHeader><DialogTitle>Esikatselu</DialogTitle></DialogHeader>
+                {previewUrl && <iframe src={previewUrl} className="w-full h-[70vh] rounded-md border" />}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="logs">
             <Card className="glass-card">
-              <CardHeader><CardTitle className="flex items-center gap-2"><History className="h-5 w-5 text-primary" />Muutoshistoria</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><History className="h-5 w-5 text-primary" />Muutoshistoria</CardTitle>
+              </CardHeader>
               <CardContent>
-                {auditLogs.length === 0 ? <p className="text-muted-foreground text-center py-4">Ei lokimerkintöjä</p> : (
-                  <div className="space-y-2">
+                {auditLogs.length === 0 ? (
+                  <p className="text-center py-8 text-muted-foreground">Ei lokimerkintöjä</p>
+                ) : (
+                  <div className="space-y-4">
                     {auditLogs.map((log: any) => {
                       const changes = getChangedFields(log.old_data, log.new_data);
                       return (
-                        <div key={log.id} className="p-3 bg-muted/30 rounded-lg border text-sm">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge className={log.action === "create" ? "bg-status-active text-status-active-foreground" : log.action === "delete" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"}>
-                              {log.action === "create" ? "Luonti" : log.action === "update" ? "Muokkaus" : "Poisto"}
+                        <div key={log.id} className="border-b border-border pb-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <Badge variant={log.action === "view_ssn" ? "outline" : log.action === "delete" ? "destructive" : "default"}>
+                              {log.action === "view_ssn" ? "HETU katselu" : log.action === "create" ? "Luonti" : log.action === "update" ? "Muokkaus" : log.action === "delete" ? "Poisto" : log.action}
                             </Badge>
-                            <span className="text-muted-foreground">{format(new Date(log.created_at), "d.M.yyyy HH:mm", { locale: fi })}</span>
+                            <span className="text-xs text-muted-foreground">{format(new Date(log.created_at), "d.M.yyyy HH:mm", { locale: fi })}</span>
                           </div>
-                          {changes.length > 0 && <div className="mt-2 space-y-1">{changes.slice(0, 5).map((c, i) => (
-                            <div key={i} className="text-xs"><span className="font-medium">{c.field}:</span>{" "}<span className="text-destructive line-through">{JSON.stringify(c.oldValue) || "—"}</span>{" → "}<span className="text-status-active">{JSON.stringify(c.newValue) || "—"}</span></div>
-                          ))}</div>}
+                          {log.description && <p className="text-sm text-muted-foreground">{log.description}</p>}
+                          {changes.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {changes.map((c, i) => (
+                                <div key={i} className="text-xs">
+                                  <span className="font-medium">{c.field}:</span>{" "}
+                                  <span className="text-destructive line-through">{String(c.oldValue ?? "—")}</span>{" → "}
+                                  <span className="text-status-active-foreground">{String(c.newValue ?? "—")}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -446,37 +500,6 @@ export default function DriverProfile() {
             </Card>
           </TabsContent>
         </Tabs>
-
-        <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle>Lataa kuljettajan dokumentti</DialogTitle></DialogHeader>
-            <form onSubmit={(e) => { e.preventDefault(); if (!selectedFile || !uploadData.document_type_id) { toast.error("Valitse tiedosto ja dokumenttityyppi"); return; } uploadMutation.mutate({ file: selectedFile, metadata: uploadData }); }} className="space-y-4">
-              <div><Label>Dokumenttityyppi *</Label>
-                <Select value={uploadData.document_type_id} onValueChange={(v) => setUploadData({ ...uploadData, document_type_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Valitse tyyppi" /></SelectTrigger>
-                  <SelectContent>{documentTypes.map((dt: any) => <SelectItem key={dt.id} value={dt.id}>{dt.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>Tiedosto (max 10MB) *</Label><Input ref={fileInputRef} type="file" accept=".pdf,.jpg,.png" onChange={(e) => { const f = e.target.files?.[0]; if (f && f.size > 10 * 1024 * 1024) { toast.error("Liian suuri"); return; } setSelectedFile(f || null); }} /></div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div><Label>Voimassa alkaen</Label><Input type="date" value={uploadData.valid_from} onChange={(e) => setUploadData({ ...uploadData, valid_from: e.target.value })} /></div>
-                <div><Label>Voimassa saakka</Label><Input type="date" value={uploadData.valid_until} onChange={(e) => setUploadData({ ...uploadData, valid_until: e.target.value })} /></div>
-              </div>
-              <div><Label>Muistiinpanot</Label><Input value={uploadData.notes} onChange={(e) => setUploadData({ ...uploadData, notes: e.target.value })} /></div>
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsUploadOpen(false)}>Peruuta</Button>
-                <Button type="submit" disabled={uploadMutation.isPending}>{uploadMutation.isPending ? "Ladataan..." : "Lataa"}</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-          <DialogContent className="max-w-4xl h-[80vh]">
-            <DialogHeader><DialogTitle>Esikatselu</DialogTitle></DialogHeader>
-            {previewUrl && <iframe src={previewUrl} className="w-full h-full rounded-lg border" title="Preview" />}
-          </DialogContent>
-        </Dialog>
       </div>
     </DashboardLayout>
   );

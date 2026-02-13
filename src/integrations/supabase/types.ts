@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      _encryption_keys: {
+        Row: {
+          id: string
+          key_name: string
+          key_value: string
+        }
+        Insert: {
+          id?: string
+          key_name: string
+          key_value: string
+        }
+        Update: {
+          id?: string
+          key_name?: string
+          key_value?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1203,6 +1221,9 @@ export type Database = {
       }
     }
     Functions: {
+      decrypt_ssn: { Args: { encrypted: string }; Returns: string }
+      encrypt_ssn: { Args: { plaintext: string }; Returns: string }
+      get_driver_ssn: { Args: { p_driver_id: string }; Returns: string }
       get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_page_permission: {
         Args: { _page_key: string; _user_id: string }
