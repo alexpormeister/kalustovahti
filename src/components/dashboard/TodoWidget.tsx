@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ListTodo, Plus, Trash2 } from "lucide-react";
+import { ListTodo, Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 export function TodoWidget() {
   const queryClient = useQueryClient();
   const [newTask, setNewTask] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
 
   const { data: todos = [] } = useQuery({
     queryKey: ["user-todos"],
@@ -53,6 +54,18 @@ export function TodoWidget() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["user-todos"] }),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const { error } = await supabase.from("user_todos").update({ title }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-todos"] });
+      setEditingId(null);
+    },
+    onError: () => toast.error("Virhe muokattaessa tehtävää"),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("user_todos").delete().eq("id", id);
@@ -60,6 +73,17 @@ export function TodoWidget() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["user-todos"] }),
   });
+
+  const startEdit = (id: string, title: string) => {
+    setEditingId(id);
+    setEditingTitle(title);
+  };
+
+  const saveEdit = () => {
+    if (editingId && editingTitle.trim()) {
+      updateMutation.mutate({ id: editingId, title: editingTitle.trim() });
+    }
+  };
 
   const pending = todos.filter((t: any) => !t.completed);
   const done = todos.filter((t: any) => t.completed);
@@ -103,15 +127,48 @@ export function TodoWidget() {
                 checked={false}
                 onCheckedChange={() => toggleMutation.mutate({ id: todo.id, completed: true })}
               />
-              <span className="text-sm flex-1">{todo.title}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                onClick={() => deleteMutation.mutate(todo.id)}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
+              {editingId === todo.id ? (
+                <div className="flex items-center gap-1 flex-1">
+                  <Input
+                    value={editingTitle}
+                    onChange={(e) => setEditingTitle(e.target.value)}
+                    className="h-7 text-sm"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveEdit();
+                      if (e.key === "Escape") setEditingId(null);
+                    }}
+                  />
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={saveEdit}>
+                    <Check className="h-3 w-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingId(null)}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <span className="text-sm flex-1 cursor-pointer" onDoubleClick={() => startEdit(todo.id, todo.title)}>
+                    {todo.title}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground"
+                    onClick={() => startEdit(todo.id, todo.title)}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                    onClick={() => deleteMutation.mutate(todo.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </>
+              )}
             </div>
           ))}
 
