@@ -178,7 +178,13 @@ export default function Fleet() {
       if (data.selected_fleets.length > 0) await supabase.from("vehicle_fleet_links").insert(data.selected_fleets.map(f => ({ vehicle_id: newVehicle.id, fleet_id: f })));
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["fleet-vehicles"] }); toast.success("Ajoneuvo lisätty onnistuneesti"); setIsAddDialogOpen(false); resetForm(); },
-    onError: () => toast.error("Virhe lisättäessä ajoneuvoa"),
+    onError: (error: any) => {
+      if (error?.message?.includes("idx_vehicles_unique_active_number")) {
+        toast.error("Tällä autonumerolla on jo aktiivinen ajoneuvo");
+      } else {
+        toast.error("Virhe lisättäessä ajoneuvoa");
+      }
+    },
   });
 
   const updateMutation = useMutation({
@@ -196,7 +202,13 @@ export default function Fleet() {
       if (data.selected_fleets.length > 0) await supabase.from("vehicle_fleet_links").insert(data.selected_fleets.map(f => ({ vehicle_id: id, fleet_id: f })));
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["fleet-vehicles"] }); toast.success("Ajoneuvo päivitetty onnistuneesti"); setSelectedVehicle(null); resetForm(); },
-    onError: () => toast.error("Virhe päivitettäessä ajoneuvoa"),
+    onError: (error: any) => {
+      if (error?.message?.includes("idx_vehicles_unique_active_number")) {
+        toast.error("Tällä autonumerolla on jo aktiivinen ajoneuvo");
+      } else {
+        toast.error("Virhe päivitettäessä ajoneuvoa");
+      }
+    },
   });
 
   const resetForm = () => {
@@ -216,6 +228,18 @@ export default function Fleet() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Client-side duplicate vehicle number check
+    if (formData.status !== "removed") {
+      const duplicate = vehicles.find(v => 
+        v.vehicle_number === formData.vehicle_number && 
+        v.status !== "removed" && 
+        v.id !== selectedVehicle?.id
+      );
+      if (duplicate) {
+        toast.error(`Autonumero ${formData.vehicle_number} on jo käytössä aktiivisella ajoneuvolla (${duplicate.registration_number})`);
+        return;
+      }
+    }
     if (selectedVehicle) updateMutation.mutate({ id: selectedVehicle.id, data: formData });
     else createMutation.mutate(formData);
   };

@@ -174,7 +174,7 @@ export default function Reports() {
           query = supabase.from("fleets").select("name, description, created_at").order("name");
           break;
       }
-      if (reportType !== "quality_incidents") {
+      if (query) {
         const { data, error } = await query;
         if (error) throw error;
         return data || [];
@@ -382,21 +382,21 @@ export default function Reports() {
         {showAdvanced && (
           <Card className="glass-card">
             <CardContent className="pt-4 space-y-4">
-              <div className="flex flex-wrap gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-1">
                   <Label>Alkaen</Label>
-                  <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-40" />
+                  <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
                 </div>
                 <div className="space-y-1">
                   <Label>Saakka</Label>
-                  <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-40" />
+                  <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
                 </div>
                 {uniqueCities.length > 0 && (
                   <div className="space-y-1">
                     <Label>{reportType === "drivers" ? "Kunta" : "Kaupunki"}</Label>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-52 justify-between">
+                        <Button variant="outline" className="w-full justify-between">
                           {cityFilters.length > 0 ? `${cityFilters.length} valittu` : "Valitse..."}
                           <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                         </Button>
@@ -426,7 +426,7 @@ export default function Reports() {
                   <div className="space-y-1">
                     <Label>Tila</Label>
                     <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
-                      <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Kaikki</SelectItem>
                         {uniqueStatuses.map((s) => <SelectItem key={String(s)} value={String(s)}>{statusTranslations[String(s)] || String(s)}</SelectItem>)}
@@ -438,7 +438,7 @@ export default function Reports() {
                   <div className="space-y-1">
                     <Label>Tyyppi</Label>
                     <Select value={typeFilter || "all"} onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}>
-                      <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Kaikki</SelectItem>
                         {uniqueTypes.map((t) => <SelectItem key={String(t)} value={String(t)}>{incidentTypeTranslations[String(t)] || String(t)}</SelectItem>)}
