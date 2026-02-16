@@ -18,11 +18,12 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Building2, Plus, Search, ExternalLink } from "lucide-react";
+import { Building2, Plus, Search, ExternalLink, Filter, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { usePagination } from "@/hooks/usePagination";
 import { PaginationControls } from "@/components/ui/PaginationControls";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type ContractStatus = 'active' | 'expired' | 'pending' | 'terminated';
 
@@ -53,6 +54,7 @@ export default function Partners() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
@@ -201,22 +203,55 @@ export default function Partners() {
           </Dialog>
         </div>
 
-        {/* Search + Status filter */}
+        {/* Search + Filters */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Hae nimellä, Y-tunnuksella, autonumerolla..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
-          <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-sm text-muted-foreground">Tila:</span>
-            {(Object.entries(contractStatusLabels) as [ContractStatus, string][]).map(([status, label]) => (
-              <div key={status} className="flex items-center gap-1">
-                <Checkbox checked={statusFilters.includes(status)} onCheckedChange={() => toggleStatusFilter(status)} id={`status-${status}`} />
-                <label htmlFor={`status-${status}`} className="text-sm cursor-pointer">{label}</label>
-              </div>
-            ))}
-          </div>
+          <Button variant={showFilters ? "default" : "outline"} onClick={() => setShowFilters(!showFilters)} className="gap-2">
+            <Filter className="h-4 w-4" />Suodattimet
+            {statusFilters.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{statusFilters.length}</Badge>}
+          </Button>
         </div>
+
+        {showFilters && (
+          <Card className="glass-card">
+            <CardContent className="pt-4">
+              <div className="flex flex-wrap gap-4">
+                <div className="space-y-1">
+                  <Label>Tila</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-48 justify-between">
+                        {statusFilters.length > 0 ? `${statusFilters.length} valittu` : "Kaikki tilat"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-2">
+                      {(Object.entries(contractStatusLabels) as [ContractStatus, string][]).map(([status, label]) => (
+                        <div key={status} className="flex items-center gap-2 py-1">
+                          <Checkbox checked={statusFilters.includes(status)} onCheckedChange={() => toggleStatusFilter(status)} id={`filter-status-${status}`} />
+                          <label htmlFor={`filter-status-${status}`} className="text-sm cursor-pointer">{label}</label>
+                        </div>
+                      ))}
+                    </PopoverContent>
+                  </Popover>
+                  {statusFilters.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {statusFilters.map(s => (
+                        <Badge key={s} variant="secondary" className="gap-1 text-xs">
+                          {contractStatusLabels[s as ContractStatus] || s}
+                          <button onClick={() => toggleStatusFilter(s)} className="ml-1 hover:text-destructive">×</button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Edit Dialog */}
         <Dialog open={!!selectedCompany} onOpenChange={(open) => { if (!open) { setSelectedCompany(null); resetForm(); } }}>

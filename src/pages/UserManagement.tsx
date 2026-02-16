@@ -74,21 +74,7 @@ interface AuditLog {
   created_at: string;
 }
 
-const defaultRoleLabels: Record<string, string> = {
-  system_admin: "Pääkäyttäjä (IT)",
-  contract_manager: "Sopimushallinta",
-  hardware_ops: "Laitehallinta",
-  support: "Asiakaspalvelu",
-};
-
-const defaultRoleDescriptions: Record<string, string> = {
-  system_admin: "Täydet oikeudet kaikkeen",
-  contract_manager: "Yritys- ja autotietojen muokkaus",
-  hardware_ops: "Laitteiden hallinta, sopimukset vain luku",
-  support: "Vain lukuoikeus kaikkeen",
-};
-
-const defaultRoleColors: Record<string, string> = {
+const systemRoleColors: Record<string, string> = {
   system_admin: "bg-destructive text-destructive-foreground",
   contract_manager: "bg-primary text-primary-foreground",
   hardware_ops: "bg-status-maintenance text-status-maintenance-foreground",
@@ -142,21 +128,13 @@ export default function UserManagement() {
     },
   });
 
-  // Build dynamic role labels and colors
+  // Build dynamic role labels and colors from DB only
   const roleLabels: Record<string, string> = {};
   const roleColors: Record<string, string> = {};
-  const roleDescriptions: Record<string, string> = {};
   
   dbRoles.forEach((r) => {
     roleLabels[r.name] = r.display_name;
-    roleColors[r.name] = defaultRoleColors[r.name] || "bg-secondary text-secondary-foreground";
-    roleDescriptions[r.name] = defaultRoleDescriptions[r.name] || r.display_name;
-  });
-  // Ensure defaults exist
-  Object.entries(defaultRoleLabels).forEach(([key, val]) => {
-    if (!roleLabels[key]) roleLabels[key] = val;
-    if (!roleColors[key]) roleColors[key] = defaultRoleColors[key] || "bg-secondary text-secondary-foreground";
-    if (!roleDescriptions[key]) roleDescriptions[key] = defaultRoleDescriptions[key] || val;
+    roleColors[r.name] = systemRoleColors[r.name] || "bg-secondary text-secondary-foreground";
   });
 
   // Fetch user emails from admin API
@@ -483,10 +461,9 @@ export default function UserManagement() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2">
-              {(Object.keys(roleLabels) as AppRole[]).map((role) => (
-                <div key={role} className="flex items-start gap-2">
-                  <Badge className={roleColors[role]}>{roleLabels[role]}</Badge>
-                  <span className="text-xs text-muted-foreground">{roleDescriptions[role]}</span>
+              {dbRoles.map((role) => (
+                <div key={role.name} className="flex items-start gap-2">
+                  <Badge className={roleColors[role.name] || "bg-secondary text-secondary-foreground"}>{role.display_name}</Badge>
                 </div>
               ))}
             </div>
@@ -657,8 +634,8 @@ export default function UserManagement() {
                     <SelectValue />
                   </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(roleLabels).map(([key, label]) => (
-                        <SelectItem key={key} value={key}>{label}</SelectItem>
+                      {dbRoles.map((r) => (
+                        <SelectItem key={r.name} value={r.name}>{r.display_name}</SelectItem>
                       ))}
                     </SelectContent>
                 </Select>
