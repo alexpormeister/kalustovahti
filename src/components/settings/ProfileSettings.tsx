@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/dialog";
 
 interface ProfileData {
-  full_name: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
 }
 
 export function ProfileSettings() {
@@ -21,7 +23,9 @@ export function ProfileSettings() {
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [profileData, setProfileData] = useState<ProfileData>({
-    full_name: "",
+    first_name: "",
+    last_name: "",
+    phone: "",
   });
   const [passwords, setPasswords] = useState({
     new: "",
@@ -39,7 +43,9 @@ export function ProfileSettings() {
           .single();
         if (profile) {
           setProfileData({
-            full_name: profile.full_name || "",
+            first_name: (profile as any).first_name || "",
+            last_name: (profile as any).last_name || "",
+            phone: profile.phone || "",
           });
         }
       }
@@ -52,9 +58,15 @@ export function ProfileSettings() {
     mutationFn: async (data: ProfileData) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Ei kirjautunut sisään");
+      const fullName = `${data.first_name} ${data.last_name}`.trim();
       const { error } = await supabase
         .from("profiles")
-        .update({ full_name: data.full_name })
+        .update({ 
+          full_name: fullName,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          phone: data.phone || null,
+        } as any)
         .eq("id", user.id);
       if (error) throw error;
     },
@@ -104,9 +116,19 @@ export function ProfileSettings() {
       <CardContent className="space-y-4">
         {isEditing ? (
           <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="profile-first-name">Etunimi</Label>
+                <Input id="profile-first-name" value={profileData.first_name} onChange={(e) => setProfileData({ ...profileData, first_name: e.target.value })} placeholder="Matti" />
+              </div>
+              <div>
+                <Label htmlFor="profile-last-name">Sukunimi</Label>
+                <Input id="profile-last-name" value={profileData.last_name} onChange={(e) => setProfileData({ ...profileData, last_name: e.target.value })} placeholder="Meikäläinen" />
+              </div>
+            </div>
             <div>
-              <Label htmlFor="profile-name">Nimi</Label>
-              <Input id="profile-name" value={profileData.full_name} onChange={(e) => setProfileData({ ...profileData, full_name: e.target.value })} placeholder="Matti Meikäläinen" />
+              <Label htmlFor="profile-phone">Puhelinnumero</Label>
+              <Input id="profile-phone" value={profileData.phone} onChange={(e) => setProfileData({ ...profileData, phone: e.target.value.replace(/[^\d+\s-]/g, '') })} placeholder="+358 40 123 4567" />
             </div>
             <div className="flex gap-2">
               <Button onClick={() => updateProfileMutation.mutate(profileData)} disabled={updateProfileMutation.isPending}>
@@ -117,9 +139,19 @@ export function ProfileSettings() {
             </div>
           </>
         ) : (
-          <div>
-            <p className="text-sm text-muted-foreground">Nimi</p>
-            <p className="font-medium">{profileData.full_name || "—"}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-sm text-muted-foreground">Etunimi</p>
+              <p className="font-medium">{profileData.first_name || "—"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Sukunimi</p>
+              <p className="font-medium">{profileData.last_name || "—"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Puhelinnumero</p>
+              <p className="font-medium">{profileData.phone || "—"}</p>
+            </div>
           </div>
         )}
 

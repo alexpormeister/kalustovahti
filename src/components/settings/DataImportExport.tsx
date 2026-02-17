@@ -90,69 +90,6 @@ const allTables: TableConfig[] = [
     ],
   },
   {
-    key: "fleets",
-    label: "Fleetit",
-    columns: [
-      { key: "name", label: "Nimi" },
-      { key: "description", label: "Kuvaus" },
-    ],
-  },
-  {
-    key: "vehicle_attributes",
-    label: "Ajoneuvo-attribuutit",
-    columns: [
-      { key: "name", label: "Nimi" },
-      { key: "description", label: "Kuvaus" },
-    ],
-  },
-  {
-    key: "driver_attributes",
-    label: "Kuljettaja-attribuutit",
-    columns: [
-      { key: "name", label: "Nimi" },
-      { key: "description", label: "Kuvaus" },
-    ],
-  },
-  {
-    key: "device_types",
-    label: "Laitetyypit",
-    columns: [
-      { key: "name", label: "Tunnus" },
-      { key: "display_name", label: "Näyttönimi" },
-      { key: "has_sim", label: "SIM-kortti" },
-      { key: "sort_order", label: "Järjestys" },
-    ],
-  },
-  {
-    key: "document_types",
-    label: "Dokumenttityypit",
-    columns: [
-      { key: "name", label: "Nimi" },
-      { key: "description", label: "Kuvaus" },
-      { key: "is_required", label: "Pakollinen" },
-      { key: "scope", label: "Kohde" },
-      { key: "validity_period_months", label: "Voimassaolo (kk)" },
-    ],
-  },
-  {
-    key: "municipalities",
-    label: "Kunnat",
-    columns: [
-      { key: "name", label: "Nimi" },
-      { key: "province", label: "Maakunta" },
-    ],
-  },
-  {
-    key: "profiles",
-    label: "Käyttäjäprofiilit",
-    columns: [
-      { key: "full_name", label: "Nimi" },
-      { key: "phone", label: "Puhelin" },
-      { key: "driver_number", label: "Kuljettajanumero" },
-      { key: "driver_license_valid_until", label: "Ajokortti voimassa" },
-    ],
-  },
-  {
     key: "quality_incidents",
     label: "Laatupoikkeamat",
     columns: [
@@ -162,30 +99,6 @@ const allTables: TableConfig[] = [
       { key: "action_taken", label: "Toimenpiteet" },
       { key: "status", label: "Tila" },
       { key: "source", label: "Lähde" },
-    ],
-  },
-  {
-    key: "vehicle_fleet_links",
-    label: "Ajoneuvo-fleet-linkitykset",
-    columns: [
-      { key: "vehicle_id", label: "Ajoneuvo ID" },
-      { key: "fleet_id", label: "Fleet ID" },
-    ],
-  },
-  {
-    key: "vehicle_attribute_links",
-    label: "Ajoneuvo-attribuuttilinkitykset",
-    columns: [
-      { key: "vehicle_id", label: "Ajoneuvo ID" },
-      { key: "attribute_id", label: "Attribuutti ID" },
-    ],
-  },
-  {
-    key: "driver_attribute_links",
-    label: "Kuljettaja-attribuuttilinkitykset",
-    columns: [
-      { key: "driver_id", label: "Kuljettaja ID" },
-      { key: "attribute_id", label: "Attribuutti ID" },
     ],
   },
 ];

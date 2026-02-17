@@ -339,6 +339,7 @@ export default function DriverProfile() {
                   </>
                 ) : (
                   <>
+                    <div className="flex items-center gap-3"><User className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Kuljettajanumero</p><p className="font-medium">{driver.driver_number || "—"}</p></div></div>
                     <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Puhelin</p><p className="font-medium">{driver.phone || "—"}</p></div></div>
                     <div className="flex items-center gap-3"><Mail className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Sähköposti</p><p className="font-medium">{driver.email || "—"}</p></div></div>
                     <div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Kunnat</p><p className="font-medium">{driver.city || "—"}</p></div></div>

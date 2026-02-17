@@ -689,8 +689,10 @@ export type Database = {
           created_at: string
           driver_license_valid_until: string | null
           driver_number: string | null
+          first_name: string | null
           full_name: string | null
           id: string
+          last_name: string | null
           phone: string | null
           updated_at: string
         }
@@ -698,8 +700,10 @@ export type Database = {
           created_at?: string
           driver_license_valid_until?: string | null
           driver_number?: string | null
+          first_name?: string | null
           full_name?: string | null
           id: string
+          last_name?: string | null
           phone?: string | null
           updated_at?: string
         }
@@ -707,8 +711,10 @@ export type Database = {
           created_at?: string
           driver_license_valid_until?: string | null
           driver_number?: string | null
+          first_name?: string | null
           full_name?: string | null
           id?: string
+          last_name?: string | null
           phone?: string | null
           updated_at?: string
         }
