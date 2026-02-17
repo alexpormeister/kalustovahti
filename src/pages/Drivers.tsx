@@ -229,7 +229,7 @@ export default function Drivers() {
       status: driver.status || "active",
       address: "",
       municipalities: driver.city ? driver.city.split(", ").filter(Boolean) : [],
-      ssn_encrypted: driver.ssn_encrypted || "",
+      ssn_encrypted: "",
       selectedAttributes: existingAttrs,
     });
     setEditingId(driver.id);

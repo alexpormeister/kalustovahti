@@ -8,8 +8,9 @@ import { FleetManager } from "@/components/settings/FleetManager";
 import { CompanyInfoManager } from "@/components/settings/CompanyInfoManager";
 import { MunicipalityManager } from "@/components/settings/MunicipalityManager";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Eye, EyeOff, Building2, Layers, Cpu, FileText, MapPin, Database, History, Tag } from "lucide-react";
+import { Eye, EyeOff, Building2, Layers, Cpu, FileText, MapPin, Database, History, Tag, Palette } from "lucide-react";
 import { AttributeManager } from "@/components/settings/AttributeManager";
+import { ThemeColorPicker } from "@/components/settings/ThemeColorPicker";
 import { ProtectedPage } from "@/components/auth/ProtectedPage";
 
 interface CollapsibleSectionProps {
@@ -80,6 +81,10 @@ export default function Maintenance() {
 
             <CollapsibleSection title="Attribuutit" icon={<Tag className="h-5 w-5 text-primary" />}>
               <AttributeManager />
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Teemaväri" icon={<Palette className="h-5 w-5 text-primary" />}>
+              <ThemeColorPicker />
             </CollapsibleSection>
 
             <CollapsibleSection title="Data" icon={<Database className="h-5 w-5 text-primary" />}>

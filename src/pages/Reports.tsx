@@ -27,7 +27,7 @@ import {
   PieChart as RechartsPie, Pie, Cell, Legend,
 } from "recharts";
 
-type ReportType = "vehicles" | "drivers" | "companies" | "hardware" | "quality_incidents" | "audit_logs" | "documents" | "fleets";
+type ReportType = "vehicles" | "drivers" | "companies" | "hardware" | "quality_incidents" | "documents";
 
 const reportTypes: { value: ReportType; label: string }[] = [
   { value: "vehicles", label: "Autot" },
@@ -36,8 +36,6 @@ const reportTypes: { value: ReportType; label: string }[] = [
   { value: "hardware", label: "Laitteet" },
   { value: "quality_incidents", label: "Laatupoikkeamat" },
   { value: "documents", label: "Dokumentit" },
-  { value: "fleets", label: "Fleetit" },
-  { value: "audit_logs", label: "Muutoslokit" },
 ];
 
 // Translation maps for technical values
@@ -67,9 +65,7 @@ const columnLabels: Record<string, Record<string, string>> = {
   companies: { name: "Nimi", business_id: "Y-tunnus", contact_person: "Yhteyshenkilö", contact_email: "Email", contact_phone: "Puhelin", contract_status: "Sopimustila" },
   hardware: { serial_number: "Sarjanumero", device_type: "Tyyppi", status: "Tila", sim_number: "SIM", created_at: "Luotu" },
   quality_incidents: { incident_date: "Päivä", incident_type: "Tyyppi", vehicle_reg: "Ajoneuvo", driver_name: "Kuljettaja", description: "Kuvaus", action_taken: "Toimenpiteet", status: "Tila", handler: "Käsittelijä", company_name: "Yritys" },
-  audit_logs: { table_name: "Taulu", action: "Toiminto", description: "Kuvaus", created_at: "Aika" },
   documents: { file_name: "Tiedosto", status: "Tila", valid_from: "Alkaen", valid_until: "Saakka", created_at: "Luotu" },
-  fleets: { name: "Nimi", description: "Kuvaus", created_at: "Luotu" },
 };
 
 const chartFields: Record<string, { field: string; label: string }[]> = {
@@ -78,9 +74,7 @@ const chartFields: Record<string, { field: string; label: string }[]> = {
   companies: [{ field: "contract_status", label: "Sopimustila" }],
   hardware: [{ field: "status", label: "Tila" }, { field: "device_type", label: "Tyyppi" }],
   quality_incidents: [{ field: "status", label: "Tila" }, { field: "incident_type", label: "Tyyppi" }],
-  audit_logs: [{ field: "action", label: "Toiminto" }, { field: "table_name", label: "Taulu" }],
   documents: [{ field: "status", label: "Tila" }],
-  fleets: [],
 };
 
 const DEFAULT_CHART_COLORS = [
@@ -164,14 +158,8 @@ export default function Reports() {
           }));
           return enriched;
         }
-        case "audit_logs":
-          query = supabase.from("audit_logs").select("table_name, action, description, created_at").order("created_at", { ascending: false }).limit(500);
-          break;
         case "documents":
           query = supabase.from("company_documents").select("file_name, status, valid_from, valid_until, created_at").order("created_at", { ascending: false });
-          break;
-        case "fleets":
-          query = supabase.from("fleets").select("name, description, created_at").order("name");
           break;
       }
       if (query) {
