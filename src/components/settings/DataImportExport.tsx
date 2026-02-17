@@ -291,6 +291,37 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const validateRecord = (record: Record<string, string | null>, tableKey: string): string | null => {
+    // Length validation
+    for (const [key, value] of Object.entries(record)) {
+      if (value && value.length > 500) {
+        return `Kenttä "${key}" on liian pitkä (max 500 merkkiä)`;
+      }
+    }
+
+    // Table-specific validation
+    if (tableKey === "vehicles") {
+      if (record.vehicle_number && !/^\d+$/.test(record.vehicle_number)) {
+        return "Autonumero saa sisältää vain numeroita";
+      }
+    }
+    if (tableKey === "companies") {
+      if (record.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.contact_email)) {
+        return `Virheellinen sähköposti: ${record.contact_email}`;
+      }
+    }
+    if (tableKey === "drivers") {
+      if (record.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.email)) {
+        return `Virheellinen sähköposti: ${record.email}`;
+      }
+      if (record.driver_license_valid_until && isNaN(Date.parse(record.driver_license_valid_until))) {
+        return `Virheellinen päivämäärä: ${record.driver_license_valid_until}`;
+      }
+    }
+
+    return null;
+  };
+
   const handleImport = async () => {
     if (!importPreview || !importFileContent) return;
 
@@ -299,6 +330,11 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
 
     try {
       const lines = importFileContent.split(/\r?\n/).filter((line) => line.trim());
+      if (lines.length > 10001) {
+        toast.error("Tiedostossa on liian monta riviä (max 10 000)");
+        setIsImporting(false);
+        return;
+      }
       const dataRows = lines.slice(1).map((l) => parseCSVLine(l));
       let success = 0;
       let failed = 0;
@@ -313,9 +349,15 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
 
           if (Object.values(record).every((v) => !v)) continue;
 
+          const validationError = validateRecord(record, selectedImportTable);
+          if (validationError) {
+            console.warn("Validation failed:", validationError);
+            failed++;
+            continue;
+          }
+
           const { error } = await supabase.from(selectedImportTable as any).insert(record as any);
           if (error) {
-            console.error("Insert error:", error);
             failed++;
           } else {
             success++;
