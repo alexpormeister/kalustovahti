@@ -9,7 +9,7 @@ import { FleetManager } from "@/components/settings/FleetManager";
 import { CompanyInfoManager } from "@/components/settings/CompanyInfoManager";
 import { MunicipalityManager } from "@/components/settings/MunicipalityManager";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Eye, EyeOff, Building2, Layers, Cpu, FileText, MapPin, Database, History, Tag, Palette, Paperclip } from "lucide-react";
+import { Eye, EyeOff, Building2, Layers, Cpu, FileText, MapPin, Database, History, Tag, Palette } from "lucide-react";
 import { AttributeManager } from "@/components/settings/AttributeManager";
 import { ThemeColorPicker } from "@/components/settings/ThemeColorPicker";
 import { ProtectedPage } from "@/components/auth/ProtectedPage";
@@ -72,12 +72,13 @@ export default function Maintenance() {
               <DeviceTypeManager />
             </CollapsibleSection>
 
-            <CollapsibleSection title="Dokumenttityypit" icon={<FileText className="h-5 w-5 text-primary" />}>
-              <DocumentTypeManager />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Liitteet" icon={<Paperclip className="h-5 w-5 text-primary" />}>
-              <SharedAttachmentManager />
+            <CollapsibleSection title="Dokumenttityypit & Liitteet" icon={<FileText className="h-5 w-5 text-primary" />}>
+              <div className="space-y-6">
+                <DocumentTypeManager />
+                <div className="border-t pt-6">
+                  <SharedAttachmentManager />
+                </div>
+              </div>
             </CollapsibleSection>
 
             <CollapsibleSection title="Kunnat" icon={<MapPin className="h-5 w-5 text-primary" />}>
