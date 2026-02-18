@@ -473,14 +473,18 @@ export default function Reports() {
                     </Select>
                   </div>
                 )}
-                {reportType === "quality_incidents" && uniqueTypes.length > 0 && (
+                {(reportType === "quality_incidents" || reportType === "hardware") && uniqueTypes.length > 0 && (
                   <div className="space-y-1">
                     <Label>Tyyppi</Label>
                     <Select value={typeFilter || "all"} onValueChange={(v) => setTypeFilter(v === "all" ? "" : v)}>
                       <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Kaikki</SelectItem>
-                        {uniqueTypes.map((t) => <SelectItem key={String(t)} value={String(t)}>{incidentTypeTranslations[String(t)] || String(t)}</SelectItem>)}
+                        {uniqueTypes.map((t) => (
+                          <SelectItem key={String(t)} value={String(t)}>
+                            {reportType === "hardware" ? (deviceTypeMap.get(String(t)) || String(t)) : (incidentTypeTranslations[String(t)] || String(t))}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -536,7 +540,7 @@ export default function Reports() {
                                 <TableCell key={col} className="max-w-[200px] truncate">
                                   {col.includes("_at") || col === "incident_date" || col === "valid_from" || col === "valid_until"
                                     ? (row[col] ? format(new Date(row[col]), "d.M.yyyy HH:mm", { locale: fi }) : "—")
-                                    : translateValue(col, row[col])}
+                                    : translateValue(col, row[col], deviceTypeMap)}
                                 </TableCell>
                               ))}
                             </TableRow>
