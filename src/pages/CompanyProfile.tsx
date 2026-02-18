@@ -107,13 +107,44 @@ export default function CompanyProfile() {
     },
   });
 
-  const { data: sharedAttachments = [] } = useQuery({
+  const { data: allSharedAttachments = [] } = useQuery({
     queryKey: ["shared-attachments-company"],
     queryFn: async () => {
       const { data, error } = await supabase.from("shared_attachments").select("*").or("scope.eq.all,scope.eq.company").order("name");
       if (error) throw error;
       return data;
     },
+  });
+
+  const { data: linkedAttachmentIds = [] } = useQuery({
+    queryKey: ["company-shared-attachment-links", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("company_shared_attachment_links").select("shared_attachment_id").eq("company_id", id);
+      if (error) throw error;
+      return data.map((l: any) => l.shared_attachment_id);
+    },
+    enabled: !!id,
+  });
+
+  const linkedAttachments = allSharedAttachments.filter((a: any) => linkedAttachmentIds.includes(a.id));
+  const unlinkedAttachments = allSharedAttachments.filter((a: any) => !linkedAttachmentIds.includes(a.id));
+
+  const addSharedAttachmentMutation = useMutation({
+    mutationFn: async (attachmentId: string) => {
+      const { error } = await supabase.from("company_shared_attachment_links").insert({ company_id: id, shared_attachment_id: attachmentId });
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["company-shared-attachment-links", id] }); toast.success("Liite lisätty"); },
+    onError: () => toast.error("Virhe lisättäessä liitettä"),
+  });
+
+  const removeSharedAttachmentMutation = useMutation({
+    mutationFn: async (attachmentId: string) => {
+      const { error } = await supabase.from("company_shared_attachment_links").delete().eq("company_id", id).eq("shared_attachment_id", attachmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["company-shared-attachment-links", id] }); toast.success("Liite poistettu"); },
+    onError: () => toast.error("Virhe poistettaessa liitettä"),
   });
 
   const addCompanyAttrMutation = useMutation({
@@ -344,15 +375,30 @@ export default function CompanyProfile() {
 
           <TabsContent value="documents" className="space-y-4">
 
-            {/* Shared attachments */}
-            {sharedAttachments.length > 0 && (
-              <Card className="glass-card">
-                <CardHeader><CardTitle className="flex items-center gap-2"><Paperclip className="h-5 w-5 text-primary" />Jaetut liitteet</CardTitle></CardHeader>
-                <CardContent>
+            {/* Shared attachments - only linked ones + dropdown to add */}
+            <Card className="glass-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2"><Paperclip className="h-5 w-5 text-primary" />Jaetut liitteet</CardTitle>
+                  {unlinkedAttachments.length > 0 && (
+                    <Select value="none" onValueChange={(v) => { if (v !== "none") addSharedAttachmentMutation.mutate(v); }}>
+                      <SelectTrigger className="w-[220px]"><SelectValue placeholder="Lisää liite..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Valitse liite</SelectItem>
+                        {unlinkedAttachments.map((a: any) => (<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {linkedAttachments.length === 0 ? (
+                  <p className="text-center py-4 text-muted-foreground">Ei liitettyjä liitteitä</p>
+                ) : (
                   <Table>
                     <TableHeader><TableRow><TableHead>Nimi</TableHead><TableHead>Tiedosto</TableHead><TableHead></TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {sharedAttachments.map((att: any) => (
+                      {linkedAttachments.map((att: any) => (
                         <TableRow key={att.id}>
                           <TableCell className="font-medium">{att.name}</TableCell>
                           <TableCell className="text-muted-foreground">{att.file_name}</TableCell>
@@ -368,15 +414,16 @@ export default function CompanyProfile() {
                                 if (error) { toast.error("Virhe"); return; }
                                 const url = URL.createObjectURL(data); const a = document.createElement("a"); a.href = url; a.download = att.file_name; a.click(); URL.revokeObjectURL(url);
                               }}><Download className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeSharedAttachmentMutation.mutate(att.id)}><Trash2 className="h-4 w-4" /></Button>
                             </div>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
             <Card className="glass-card">
               <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Dokumentit ja sopimukset</CardTitle></CardHeader>
               <CardContent>
