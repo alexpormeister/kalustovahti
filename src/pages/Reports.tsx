@@ -150,7 +150,7 @@ export default function Reports() {
           query = supabase.from("drivers").select("driver_number, full_name, phone, email, city, province, status, id").order("full_name");
           break;
         case "companies":
-          query = supabase.from("companies").select("name, business_id, contact_person, contact_email, contact_phone, contract_status").order("name");
+          query = supabase.from("companies").select("id, name, business_id, contact_person, contact_email, contact_phone, contract_status").order("name");
           break;
         case "hardware":
           query = supabase.from("hardware_devices").select("serial_number, device_type, status, sim_number, created_at").order("serial_number");
