@@ -428,12 +428,8 @@ export default function Reports() {
 
   const hasActiveFilters = searchQuery || dateFrom || dateTo || cityFilters.length > 0 || statusFilter || typeFilter || selectedAttributes.length > 0 || fuelFilter || yearMin || yearMax || co2Min || co2Max;
   const availableChartFields = useMemo(() => {
-    const base = chartFields[reportType] || [];
-    // Add attribute-based chart fields
-    const attrs = reportType === "vehicles" ? vehicleAttributes : reportType === "drivers" ? driverAttributes : reportType === "companies" ? companyAttributes : [];
-    const attrFields = attrs.map((a: any) => ({ field: `attr_${a.id}`, label: `Attribuutti: ${a.name}` }));
-    return [...base, ...attrFields];
-  }, [reportType, vehicleAttributes, driverAttributes, companyAttributes]);
+    return chartFields[reportType] || [];
+  }, [reportType]);
   const currentAttributes = reportType === "vehicles" ? vehicleAttributes : reportType === "drivers" ? driverAttributes : reportType === "companies" ? companyAttributes : [];
 
   const [citySearch, setCitySearch] = useState("");
@@ -504,7 +500,7 @@ export default function Reports() {
                         <div className="overflow-y-auto max-h-48 space-y-0.5">
                           {uniqueCities.filter(c => !citySearch || String(c).toLowerCase().includes(citySearch.toLowerCase())).map((c) => (
                             <div key={String(c)} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-accent cursor-pointer" onClick={() => toggleCityFilter(String(c))}>
-                              <Checkbox checked={cityFilters.includes(String(c))} onCheckedChange={() => toggleCityFilter(String(c))} />
+                              <Checkbox checked={cityFilters.includes(String(c))} onCheckedChange={() => {}} />
                               <span className="text-sm">{String(c)}</span>
                             </div>
                           ))}
