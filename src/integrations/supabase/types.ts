@@ -1247,8 +1247,10 @@ export type Database = {
           assigned_driver_id: string | null
           brand: string
           city: string | null
+          co2_emissions: number | null
           company_id: string | null
           created_at: string
+          fuel_type: string | null
           id: string
           meter_serial_number: string | null
           model: string
@@ -1257,13 +1259,16 @@ export type Database = {
           status: string
           updated_at: string
           vehicle_number: string
+          year_model: number | null
         }
         Insert: {
           assigned_driver_id?: string | null
           brand: string
           city?: string | null
+          co2_emissions?: number | null
           company_id?: string | null
           created_at?: string
+          fuel_type?: string | null
           id?: string
           meter_serial_number?: string | null
           model: string
@@ -1272,13 +1277,16 @@ export type Database = {
           status?: string
           updated_at?: string
           vehicle_number: string
+          year_model?: number | null
         }
         Update: {
           assigned_driver_id?: string | null
           brand?: string
           city?: string | null
+          co2_emissions?: number | null
           company_id?: string | null
           created_at?: string
+          fuel_type?: string | null
           id?: string
           meter_serial_number?: string | null
           model?: string
@@ -1287,6 +1295,7 @@ export type Database = {
           status?: string
           updated_at?: string
           vehicle_number?: string
+          year_model?: number | null
         }
         Relationships: [
           {

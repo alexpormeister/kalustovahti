@@ -105,6 +105,7 @@ export default function Fleet() {
     registration_number: "", vehicle_number: "", brand: "", model: "",
     status: "active" as VehicleStatus, company_id: "", payment_terminal_id: "",
     meter_serial_number: "", city: "", selected_attributes: [] as string[], selected_fleets: [] as string[],
+    year_model: "", fuel_type: "", co2_emissions: "",
   });
 
   const queryClient = useQueryClient();
@@ -172,6 +173,9 @@ export default function Fleet() {
         brand: data.brand, model: data.model, status: data.status,
         company_id: data.company_id || null, payment_terminal_id: data.payment_terminal_id || null,
         meter_serial_number: data.meter_serial_number || null, city: data.city || null,
+        year_model: data.year_model ? parseInt(data.year_model) : null,
+        fuel_type: data.fuel_type || null,
+        co2_emissions: data.co2_emissions ? parseFloat(data.co2_emissions) : null,
       }]).select().single();
       if (error) throw error;
       if (data.selected_attributes.length > 0) await supabase.from("vehicle_attribute_links").insert(data.selected_attributes.map(a => ({ vehicle_id: newVehicle.id, attribute_id: a })));
@@ -194,6 +198,9 @@ export default function Fleet() {
         brand: data.brand, model: data.model, status: data.status,
         company_id: data.company_id || null, payment_terminal_id: data.payment_terminal_id || null,
         meter_serial_number: data.meter_serial_number || null, city: data.city || null,
+        year_model: data.year_model ? parseInt(data.year_model) : null,
+        fuel_type: data.fuel_type || null,
+        co2_emissions: data.co2_emissions ? parseFloat(data.co2_emissions) : null,
       }).eq("id", id);
       if (error) throw error;
       await supabase.from("vehicle_attribute_links").delete().eq("vehicle_id", id);
@@ -212,7 +219,7 @@ export default function Fleet() {
   });
 
   const resetForm = () => {
-    setFormData({ registration_number: "", vehicle_number: "", brand: "", model: "", status: "active", company_id: "", payment_terminal_id: "", meter_serial_number: "", city: "", selected_attributes: [], selected_fleets: [] });
+    setFormData({ registration_number: "", vehicle_number: "", brand: "", model: "", status: "active", company_id: "", payment_terminal_id: "", meter_serial_number: "", city: "", selected_attributes: [], selected_fleets: [], year_model: "", fuel_type: "", co2_emissions: "" });
   };
 
   const handleEdit = (vehicle: Vehicle) => {
@@ -223,6 +230,7 @@ export default function Fleet() {
       company_id: vehicle.company_id || "", payment_terminal_id: vehicle.payment_terminal_id || "",
       meter_serial_number: vehicle.meter_serial_number || "", city: vehicle.city || "",
       selected_attributes: vehicle.attributes?.map(a => a.id) || [], selected_fleets: vehicle.fleets?.map(f => f.id) || [],
+      year_model: (vehicle as any).year_model?.toString() || "", fuel_type: (vehicle as any).fuel_type || "", co2_emissions: (vehicle as any).co2_emissions?.toString() || "",
     });
   };
 
@@ -313,7 +321,26 @@ export default function Fleet() {
           <DeviceSearchSelect devices={hardwareDevices} value={formData.meter_serial_number} onChange={(v) => setFormData({ ...formData, meter_serial_number: v })} placeholder="Valitse mittari..." deviceType="taximeter" />
         </div>
       </div>
-      <div><Label>Kaupunki</Label><Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} placeholder="Esim. Helsinki" /></div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div><Label>Kaupunki</Label><Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} placeholder="Esim. Helsinki" /></div>
+        <div><Label>Vuosimalli</Label><Input type="number" value={formData.year_model} onChange={(e) => setFormData({ ...formData, year_model: e.target.value })} placeholder="Esim. 2024" min="1900" max="2099" /></div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div><Label>Käyttövoima</Label>
+          <Select value={formData.fuel_type || "none"} onValueChange={(v) => setFormData({ ...formData, fuel_type: v === "none" ? "" : v })}>
+            <SelectTrigger><SelectValue placeholder="Valitse..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Ei valittu</SelectItem>
+              <SelectItem value="bensiini">Bensiini</SelectItem>
+              <SelectItem value="diesel">Diesel</SelectItem>
+              <SelectItem value="sähkö">Sähkö</SelectItem>
+              <SelectItem value="hybridi">Hybridi</SelectItem>
+              <SelectItem value="kaasu">Kaasu</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div><Label>CO₂-päästöt (g/km)</Label><Input type="number" value={formData.co2_emissions} onChange={(e) => setFormData({ ...formData, co2_emissions: e.target.value })} placeholder="Esim. 120" min="0" /></div>
+      </div>
 
       {fleets.length > 0 && (
         <div><Label>Fleetit</Label>
