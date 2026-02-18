@@ -88,30 +88,46 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
     return initial;
   });
 
-  // Fetch current user profile and role
+  // Fetch current user profile and role - refetch on auth changes
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+
+  // Listen for auth state changes to trigger re-fetch
+  useState(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setAuthUserId(session?.user?.id || null);
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthUserId(session?.user?.id || null);
+    });
+    return () => subscription.unsubscribe();
+  });
+
   const { data: currentUser } = useQuery({
-    queryKey: ["current-user-sidebar"],
+    queryKey: ["current-user-sidebar", authUserId],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      if (!authUserId) return null;
       const [profileRes, roleRes] = await Promise.all([
-        supabase.from("profiles").select("full_name").eq("id", user.id).single(),
-        supabase.from("user_roles").select("role").eq("user_id", user.id).single(),
+        supabase.from("profiles").select("full_name, first_name, last_name").eq("id", authUserId).single(),
+        supabase.from("user_roles").select("role").eq("user_id", authUserId).single(),
       ]);
       const roleName = roleRes.data?.role || "user";
-      // Fetch display_name from roles table
       const { data: roleInfo } = await supabase
         .from("roles")
         .select("display_name")
         .eq("name", roleName)
         .maybeSingle();
+      const profile = profileRes.data;
+      const displayName = profile?.full_name || 
+        [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || 
+        "Käyttäjä";
       return {
-        name: profileRes.data?.full_name || user.email?.split("@")[0] || "Käyttäjä",
+        name: displayName,
         role: roleName,
         roleDisplayName: roleInfo?.display_name || roleLabels[roleName] || roleName,
       };
     },
-    staleTime: 5 * 60 * 1000,
+    enabled: !!authUserId,
+    staleTime: 0,
   });
 
   const toggleGroup = (label: string) => {

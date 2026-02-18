@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useQueryClient } from "@tanstack/react-query";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 interface DashboardLayoutProps {
@@ -14,6 +15,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -21,6 +23,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     if (error) {
       toast.error("Uloskirjautuminen epäonnistui");
     } else {
+      // Clear all cached queries so sidebar refreshes on next login
+      queryClient.clear();
       toast.success("Kirjauduit ulos onnistuneesti");
       navigate("/auth");
     }
