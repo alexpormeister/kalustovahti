@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -432,7 +433,14 @@ export default function Drivers() {
           <Input placeholder="Hae nimellä, numerolla, puhelinnumerolla, kunnalla..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
         </div>
 
-        <div className="glass-card rounded-xl overflow-hidden">
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-primary" />Kuljettajat ({filteredDrivers.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <div className="text-center py-8 text-muted-foreground">Ladataan...</div> : paginatedDrivers.length === 0 ? <div className="text-center py-8 text-muted-foreground"><Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" /><p>Ei kuljettajia löytynyt</p></div> : (
+              <>
+                <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
@@ -466,52 +474,49 @@ export default function Drivers() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">Ladataan...</TableCell></TableRow>
-              ) : paginatedDrivers.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="h-24 text-center"><Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground">Ei kuljettajia löytynyt</p></TableCell></TableRow>
-              ) : (
-                paginatedDrivers.map((driver) => (
-                  <TableRow key={driver.id} className="border-border hover:bg-muted/50">
-                    <TableCell className="font-medium">{driver.full_name}</TableCell>
-                    <TableCell>{driver.driver_number}</TableCell>
-                    <TableCell>{driver.phone || "—"}</TableCell>
-                    <TableCell className="max-w-[150px] truncate">{driver.city || "—"}</TableCell>
-                    <TableCell>
-                      {driver.driver_license_valid_until ? (
-                        <span className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                          isLicenseExpired(driver.driver_license_valid_until) ? "bg-destructive/20 text-destructive"
-                            : isLicenseExpiringSoon(driver.driver_license_valid_until) ? "bg-status-maintenance/20 text-status-maintenance"
-                            : "bg-status-active/20 text-status-active"
-                        )}>
-                          {format(new Date(driver.driver_license_valid_until), "d.M.yyyy", { locale: fi })}
-                        </span>
-                      ) : "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn(
-                        driver.status === "active" && "bg-status-active/20 text-status-active border-status-active/30",
-                        driver.status === "inactive" && "bg-muted text-muted-foreground",
-                        driver.status === "suspended" && "bg-destructive/20 text-destructive border-destructive/30"
-                      )}>
-                        {driver.status === "active" ? "Aktiivinen" : driver.status === "inactive" ? "Ei-aktiivinen" : "Estetty"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/kuljettajat/${driver.id}`)} title="Avaa profiili"><ExternalLink className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(driver)}><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { if (confirm("Haluatko varmasti poistaa?")) deleteMutation.mutate(driver.id); }}><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-          <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} startIndex={startIndex} endIndex={endIndex} totalItems={totalItems} />
-        </div>
+                    {paginatedDrivers.map((driver) => (
+                      <TableRow key={driver.id} className="border-border hover:bg-muted/50 cursor-pointer" onClick={() => navigate(`/kuljettajat/${driver.id}`)}>
+                        <TableCell className="font-medium">{driver.full_name}</TableCell>
+                        <TableCell>{driver.driver_number}</TableCell>
+                        <TableCell>{driver.phone || "—"}</TableCell>
+                        <TableCell className="max-w-[150px] truncate">{driver.city || "—"}</TableCell>
+                        <TableCell>
+                          {driver.driver_license_valid_until ? (
+                            <span className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                              isLicenseExpired(driver.driver_license_valid_until) ? "bg-destructive/20 text-destructive"
+                                : isLicenseExpiringSoon(driver.driver_license_valid_until) ? "bg-status-maintenance/20 text-status-maintenance"
+                                : "bg-status-active/20 text-status-active"
+                            )}>
+                              {format(new Date(driver.driver_license_valid_until), "d.M.yyyy", { locale: fi })}
+                            </span>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(
+                            driver.status === "active" && "bg-status-active/20 text-status-active border-status-active/30",
+                            driver.status === "inactive" && "bg-muted text-muted-foreground",
+                            driver.status === "suspended" && "bg-destructive/20 text-destructive border-destructive/30"
+                          )}>
+                            {driver.status === "active" ? "Aktiivinen" : driver.status === "inactive" ? "Ei-aktiivinen" : "Estetty"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(driver)}><Pencil className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { if (confirm("Haluatko varmasti poistaa?")) deleteMutation.mutate(driver.id); }}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                </div>
+                <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} startIndex={startIndex} endIndex={endIndex} totalItems={totalItems} />
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

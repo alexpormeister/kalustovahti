@@ -322,27 +322,28 @@ export default function Partners() {
           <CardContent>
             {isLoading ? <div className="text-center py-8 text-muted-foreground">Ladataan...</div> : paginatedCompanies.length === 0 ? <div className="text-center py-8 text-muted-foreground">Ei autoilijoita</div> : (
               <>
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow><TableHead>Yritys</TableHead><TableHead>Y-tunnus</TableHead><TableHead>Yhteyshenkilö</TableHead><TableHead>Puhelin</TableHead><TableHead>Sopimus</TableHead><TableHead></TableHead></TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedCompanies.map(company => (
-                      <TableRow key={company.id}>
+                      <TableRow key={company.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/autoilijat/${company.id}`)}>
                         <TableCell className="font-medium">{company.name}</TableCell>
                         <TableCell>{company.business_id || "—"}</TableCell>
                         <TableCell>{company.contact_person || "—"}</TableCell>
                         <TableCell>{company.contact_phone || "—"}</TableCell>
                         <TableCell>{company.contract_status && <Badge className={contractStatusColors[company.contract_status]}>{contractStatusLabels[company.contract_status]}</Badge>}</TableCell>
                         <TableCell>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(company)}>Muokkaa</Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/autoilijat/${company.id}`)}><ExternalLink className="h-4 w-4" /></Button>
+                          <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(company)}><ExternalLink className="h-4 w-4" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>
                     ))}</TableBody>
                 </Table>
+                </div>
                 <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} startIndex={startIndex} endIndex={endIndex} totalItems={totalItems} />
               </>
             )}
