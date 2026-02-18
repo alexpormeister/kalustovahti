@@ -101,6 +101,11 @@ export default function Reports() {
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [selectedAttributes, setSelectedAttributes] = useState<string[]>([]);
+  const [fuelFilter, setFuelFilter] = useState("");
+  const [yearMin, setYearMin] = useState("");
+  const [yearMax, setYearMax] = useState("");
+  const [co2Min, setCo2Min] = useState("");
+  const [co2Max, setCo2Max] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [chartField, setChartField] = useState("");
   const [chartType, setChartType] = useState<"bar" | "pie">("bar");
@@ -230,6 +235,12 @@ export default function Reports() {
     return [];
   }, [reportType, municipalities, reportData]);
 
+  const uniqueFuelTypes = useMemo(() => {
+    if (reportType !== "vehicles") return [];
+    const types = new Set(reportData.filter((r: any) => r.fuel_type).map((r: any) => r.fuel_type));
+    return Array.from(types).sort() as string[];
+  }, [reportData, reportType]);
+
   const uniqueStatuses = useMemo(() => {
     const field = reportType === "companies" ? "contract_status" : "status";
     const statuses = new Set(reportData.filter((r: any) => r[field]).map((r: any) => r[field]));
@@ -274,6 +285,13 @@ export default function Reports() {
     if (statusFilter) data = data.filter((row: any) => row[statusField] === statusFilter);
     if (typeFilter && reportType === "quality_incidents") data = data.filter((row: any) => row.incident_type === typeFilter);
     if (typeFilter && reportType === "hardware") data = data.filter((row: any) => row.device_type === typeFilter);
+    if (reportType === "vehicles") {
+      if (fuelFilter) data = data.filter((row: any) => row.fuel_type === fuelFilter);
+      if (yearMin) data = data.filter((row: any) => row.year_model && row.year_model >= parseInt(yearMin));
+      if (yearMax) data = data.filter((row: any) => row.year_model && row.year_model <= parseInt(yearMax));
+      if (co2Min) data = data.filter((row: any) => row.co2_emissions != null && row.co2_emissions >= parseFloat(co2Min));
+      if (co2Max) data = data.filter((row: any) => row.co2_emissions != null && row.co2_emissions <= parseFloat(co2Max));
+    }
     if (reportType === "vehicles" && selectedAttributes.length > 0) {
       data = data.filter((row: any) => {
         const vLinks = vehicleAttrLinks.filter((l: any) => l.vehicle_id === row.id);
@@ -300,7 +318,7 @@ export default function Reports() {
       data = [...data].sort((a: any, b: any) => (parseInt(a.driver_number, 10) || 0) - (parseInt(b.driver_number, 10) || 0));
     }
     return data;
-  }, [reportData, searchQuery, dateFrom, dateTo, cityFilters, statusFilter, typeFilter, selectedAttributes, vehicleAttrLinks, driverAttrLinks, reportType]);
+  }, [reportData, searchQuery, dateFrom, dateTo, cityFilters, statusFilter, typeFilter, fuelFilter, yearMin, yearMax, co2Min, co2Max, selectedAttributes, vehicleAttrLinks, driverAttrLinks, reportType]);
 
   const { currentPage, setCurrentPage, totalPages, paginatedData, startIndex, endIndex, totalItems } = usePagination(filteredData, { pageSize: 10 });
 
@@ -405,9 +423,10 @@ export default function Reports() {
 
   const resetFilters = () => {
     setSearchQuery(""); setDateFrom(""); setDateTo(""); setCityFilters([]); setStatusFilter(""); setTypeFilter(""); setSelectedAttributes([]);
+    setFuelFilter(""); setYearMin(""); setYearMax(""); setCo2Min(""); setCo2Max("");
   };
 
-  const hasActiveFilters = searchQuery || dateFrom || dateTo || cityFilters.length > 0 || statusFilter || typeFilter || selectedAttributes.length > 0;
+  const hasActiveFilters = searchQuery || dateFrom || dateTo || cityFilters.length > 0 || statusFilter || typeFilter || selectedAttributes.length > 0 || fuelFilter || yearMin || yearMax || co2Min || co2Max;
   const availableChartFields = useMemo(() => {
     const base = chartFields[reportType] || [];
     // Add attribute-based chart fields
@@ -478,13 +497,21 @@ export default function Reports() {
                           <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-52 p-2 max-h-60 overflow-y-auto">
-                        {uniqueCities.map((c) => (
-                          <div key={String(c)} className="flex items-center gap-2 py-1">
-                            <Checkbox checked={cityFilters.includes(String(c))} onCheckedChange={() => toggleCityFilter(String(c))} />
-                            <span className="text-sm">{String(c)}</span>
-                          </div>
-                        ))}
+                      <PopoverContent className="w-60 p-2 max-h-72 overflow-hidden flex flex-col">
+                        <div className="mb-2">
+                          <Input placeholder="Hae..." value={citySearch} onChange={(e) => setCitySearch(e.target.value)} className="h-8 text-sm" />
+                        </div>
+                        <div className="overflow-y-auto max-h-48 space-y-0.5">
+                          {uniqueCities.filter(c => !citySearch || String(c).toLowerCase().includes(citySearch.toLowerCase())).map((c) => (
+                            <div key={String(c)} className="flex items-center gap-2 py-1 px-1 rounded hover:bg-accent cursor-pointer" onClick={() => toggleCityFilter(String(c))}>
+                              <Checkbox checked={cityFilters.includes(String(c))} onCheckedChange={() => toggleCityFilter(String(c))} />
+                              <span className="text-sm">{String(c)}</span>
+                            </div>
+                          ))}
+                          {uniqueCities.filter(c => !citySearch || String(c).toLowerCase().includes(citySearch.toLowerCase())).length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-2">Ei tuloksia</p>
+                          )}
+                        </div>
                       </PopoverContent>
                     </Popover>
                     {cityFilters.length > 0 && (
@@ -498,6 +525,34 @@ export default function Reports() {
                       </div>
                     )}
                   </div>
+                )}
+                {reportType === "vehicles" && (
+                  <>
+                    <div className="space-y-1">
+                      <Label>Käyttövoima</Label>
+                      <Select value={fuelFilter || "all"} onValueChange={(v) => setFuelFilter(v === "all" ? "" : v)}>
+                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Kaikki</SelectItem>
+                          {uniqueFuelTypes.map((f) => <SelectItem key={f} value={f}>{fuelTypeTranslations[f] || f}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Vuosimalli (min–max)</Label>
+                      <div className="flex gap-2">
+                        <Input type="number" placeholder="Min" value={yearMin} onChange={(e) => setYearMin(e.target.value)} className="h-9" />
+                        <Input type="number" placeholder="Max" value={yearMax} onChange={(e) => setYearMax(e.target.value)} className="h-9" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>CO₂ g/km (min–max)</Label>
+                      <div className="flex gap-2">
+                        <Input type="number" placeholder="Min" value={co2Min} onChange={(e) => setCo2Min(e.target.value)} className="h-9" />
+                        <Input type="number" placeholder="Max" value={co2Max} onChange={(e) => setCo2Max(e.target.value)} className="h-9" />
+                      </div>
+                    </div>
+                  </>
                 )}
                 {uniqueStatuses.length > 0 && (
                   <div className="space-y-1">

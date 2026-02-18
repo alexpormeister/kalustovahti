@@ -425,8 +425,7 @@ export default function VehicleProfile() {
                       </div>
                       <div className="flex items-center gap-3"><Layers className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Fleetit</p><div className="flex flex-wrap gap-1">{vehicleFleets.length > 0 ? vehicleFleets.map((f: any) => <Badge key={f.id} variant="secondary" className="text-xs">{f.name}</Badge>) : <p className="font-medium">—</p>}</div></div></div>
                       <div><p className="text-sm text-muted-foreground">Kaupunki</p><p className="font-medium">{(vehicle as any).city || "—"}</p></div>
-                      <div className="flex items-center gap-3"><CreditCard className="h-4 w-4 text-muted-foreground" /><div><p className="text-sm text-muted-foreground">Maksupääte-ID</p><p className="font-medium font-mono">{vehicle.payment_terminal_id || "—"}</p></div></div>
-                      <div><p className="text-sm text-muted-foreground">Mittarin sarjanumero</p><p className="font-medium font-mono">{vehicle.meter_serial_number || "—"}</p></div>
+                      <div><p className="text-sm text-muted-foreground">Kaupunki</p><p className="font-medium">{(vehicle as any).city || "—"}</p></div>
                     </div>
 
                     {/* Attributes display */}
