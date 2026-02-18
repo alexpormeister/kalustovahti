@@ -157,6 +157,9 @@ export default function VehicleProfile() {
         payment_terminal_id: data.payment_terminal_id || null,
         meter_serial_number: data.meter_serial_number || null,
         city: data.city || null,
+        year_model: data.year_model ? parseInt(data.year_model) : null,
+        fuel_type: data.fuel_type || null,
+        co2_emissions: data.co2_emissions ? parseFloat(data.co2_emissions) : null,
       }).eq("id", id);
       if (error) throw error;
 
@@ -237,6 +240,9 @@ export default function VehicleProfile() {
       city: (vehicle as any).city || "",
       selected_fleets: vehicleFleets.map((f: any) => f.id),
       selected_attributes: attributes.map((a: any) => a.id),
+      year_model: (vehicle as any).year_model?.toString() || "",
+      fuel_type: (vehicle as any).fuel_type || "",
+      co2_emissions: (vehicle as any).co2_emissions?.toString() || "",
     });
     setIsEditing(true);
   };
@@ -315,6 +321,21 @@ export default function VehicleProfile() {
                         </Select>
                       </div>
                       <div><Label>Kaupunki</Label><Input value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} placeholder="Esim. Helsinki" /></div>
+                      <div><Label>Vuosimalli</Label><Input type="number" value={editForm.year_model || ""} onChange={(e) => setEditForm({ ...editForm, year_model: e.target.value })} placeholder="Esim. 2024" min="1900" max="2099" /></div>
+                      <div><Label>Käyttövoima</Label>
+                        <Select value={editForm.fuel_type || "none"} onValueChange={(v) => setEditForm({ ...editForm, fuel_type: v === "none" ? "" : v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Ei valittu</SelectItem>
+                            <SelectItem value="bensiini">Bensiini</SelectItem>
+                            <SelectItem value="diesel">Diesel</SelectItem>
+                            <SelectItem value="sähkö">Sähkö</SelectItem>
+                            <SelectItem value="hybridi">Hybridi</SelectItem>
+                            <SelectItem value="kaasu">Kaasu</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div><Label>CO₂-päästöt (g/km)</Label><Input type="number" value={editForm.co2_emissions || ""} onChange={(e) => setEditForm({ ...editForm, co2_emissions: e.target.value })} placeholder="Esim. 120" min="0" /></div>
                       <div><Label>Tila</Label>
                         <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
@@ -386,6 +407,9 @@ export default function VehicleProfile() {
                       <div><p className="text-sm text-muted-foreground">Rekisterinumero</p><p className="font-medium font-mono">{vehicle.registration_number}</p></div>
                       <div><p className="text-sm text-muted-foreground">Autonumero</p><p className="font-medium">{vehicle.vehicle_number}</p></div>
                       <div><p className="text-sm text-muted-foreground">Merkki / Malli</p><p className="font-medium">{vehicle.brand} {vehicle.model}</p></div>
+                      <div><p className="text-sm text-muted-foreground">Vuosimalli</p><p className="font-medium">{(vehicle as any).year_model || "—"}</p></div>
+                      <div><p className="text-sm text-muted-foreground">Käyttövoima</p><p className="font-medium capitalize">{(vehicle as any).fuel_type || "—"}</p></div>
+                      <div><p className="text-sm text-muted-foreground">CO₂-päästöt</p><p className="font-medium">{(vehicle as any).co2_emissions ? `${(vehicle as any).co2_emissions} g/km` : "—"}</p></div>
                       <div className="flex items-center gap-3">
                         <Building2 className="h-4 w-4 text-muted-foreground" />
                         <div>

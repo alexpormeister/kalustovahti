@@ -46,6 +46,10 @@ const statusTranslations: Record<string, string> = {
   new: "Uusi", investigating: "Tutkinnassa", resolved: "Ratkaistu", closed: "Suljettu",
 };
 
+const fuelTypeTranslations: Record<string, string> = {
+  bensiini: "Bensiini", diesel: "Diesel", "sähkö": "Sähkö", hybridi: "Hybridi", kaasu: "Kaasu",
+};
+
 const incidentTypeTranslations: Record<string, string> = {
   customer_complaint: "Asiakasvalitus", service_quality: "Palvelun laatu",
   vehicle_condition: "Ajoneuvon kunto", driver_behavior: "Kuljettajan käytös",
@@ -57,11 +61,12 @@ const translateValue = (col: string, val: any, deviceTypeMap?: Map<string, strin
   if (col === "status" || col === "contract_status") return statusTranslations[val] || val;
   if (col === "incident_type") return incidentTypeTranslations[val] || val;
   if (col === "device_type" && deviceTypeMap) return deviceTypeMap.get(val) || val;
+  if (col === "fuel_type") return fuelTypeTranslations[val] || val;
   return String(val);
 };
 
 const columnLabels: Record<string, Record<string, string>> = {
-  vehicles: { vehicle_number: "Nro", registration_number: "Rekisteri", brand: "Merkki", model: "Malli", city: "Kaupunki", status: "Tila", created_at: "Luotu" },
+  vehicles: { vehicle_number: "Nro", registration_number: "Rekisteri", brand: "Merkki", model: "Malli", year_model: "Vuosimalli", fuel_type: "Käyttövoima", co2_emissions: "CO₂ (g/km)", city: "Kaupunki", status: "Tila", created_at: "Luotu" },
   drivers: { driver_number: "Nro", full_name: "Nimi", phone: "Puhelin", email: "Email", city: "Kunta", province: "Maakunta", status: "Tila" },
   companies: { name: "Nimi", business_id: "Y-tunnus", contact_person: "Yhteyshenkilö", contact_email: "Email", contact_phone: "Puhelin", contract_status: "Sopimustila" },
   hardware: { serial_number: "Sarjanumero", device_type: "Tyyppi", status: "Tila", sim_number: "SIM", created_at: "Luotu" },
@@ -70,7 +75,7 @@ const columnLabels: Record<string, Record<string, string>> = {
 };
 
 const chartFields: Record<string, { field: string; label: string }[]> = {
-  vehicles: [{ field: "status", label: "Tila" }, { field: "brand", label: "Merkki" }, { field: "city", label: "Kaupunki" }],
+  vehicles: [{ field: "status", label: "Tila" }, { field: "brand", label: "Merkki" }, { field: "city", label: "Kaupunki" }, { field: "fuel_type", label: "Käyttövoima" }, { field: "year_model", label: "Vuosimalli" }],
   drivers: [{ field: "status", label: "Tila" }, { field: "city", label: "Kunta" }, { field: "province", label: "Maakunta" }],
   companies: [{ field: "contract_status", label: "Sopimustila" }],
   hardware: [{ field: "status", label: "Tila" }, { field: "device_type", label: "Tyyppi" }],
@@ -133,7 +138,7 @@ export default function Reports() {
   const { data: companyAttrLinks = [] } = useQuery({
     queryKey: ["company-attr-links-report"],
     queryFn: async () => { const { data, error } = await supabase.from("company_attribute_links").select("company_id, attribute_id"); if (error) throw error; return data; },
-    enabled: reportType === "companies" && selectedAttributes.length > 0,
+    enabled: reportType === "companies",
   });
 
   const deviceTypeMap = new Map(deviceTypes.map((dt: any) => [dt.name, dt.display_name]));
@@ -144,7 +149,7 @@ export default function Reports() {
       let query: any;
       switch (reportType) {
         case "vehicles":
-          query = supabase.from("vehicles").select("vehicle_number, registration_number, brand, model, city, status, created_at, id").order("vehicle_number");
+          query = supabase.from("vehicles").select("vehicle_number, registration_number, brand, model, year_model, fuel_type, co2_emissions, city, status, created_at, id").order("vehicle_number");
           break;
         case "drivers":
           query = supabase.from("drivers").select("driver_number, full_name, phone, email, city, province, status, id").order("full_name");
@@ -204,13 +209,13 @@ export default function Reports() {
     queryKey: ["vehicle-attributes"], queryFn: async () => { const { data, error } = await supabase.from("vehicle_attributes").select("id, name").order("name"); if (error) throw error; return data; }, enabled: reportType === "vehicles",
   });
   const { data: vehicleAttrLinks = [] } = useQuery({
-    queryKey: ["vehicle-attr-links-report"], queryFn: async () => { const { data, error } = await supabase.from("vehicle_attribute_links").select("vehicle_id, attribute_id"); if (error) throw error; return data; }, enabled: reportType === "vehicles" && selectedAttributes.length > 0,
+    queryKey: ["vehicle-attr-links-report"], queryFn: async () => { const { data, error } = await supabase.from("vehicle_attribute_links").select("vehicle_id, attribute_id"); if (error) throw error; return data; }, enabled: reportType === "vehicles",
   });
   const { data: driverAttributes = [] } = useQuery({
     queryKey: ["driver-attributes"], queryFn: async () => { const { data, error } = await supabase.from("driver_attributes").select("id, name").order("name"); if (error) throw error; return data; }, enabled: reportType === "drivers",
   });
   const { data: driverAttrLinks = [] } = useQuery({
-    queryKey: ["driver-attr-links-report"], queryFn: async () => { const { data, error } = await supabase.from("driver_attribute_links").select("driver_id, attribute_id"); if (error) throw error; return data; }, enabled: reportType === "drivers" && selectedAttributes.length > 0,
+    queryKey: ["driver-attr-links-report"], queryFn: async () => { const { data, error } = await supabase.from("driver_attribute_links").select("driver_id, attribute_id"); if (error) throw error; return data; }, enabled: reportType === "drivers",
   });
 
   const columns = Object.keys(columnLabels[reportType] || {}).filter(c => c !== "id");
@@ -302,6 +307,29 @@ export default function Reports() {
   const chartData = useMemo(() => {
     if (!chartField) return [];
     const counts: Record<string, number> = {};
+
+    // Handle attribute-based chart fields
+    if (chartField.startsWith("attr_")) {
+      const attrId = chartField.replace("attr_", "");
+      const allAttrs = reportType === "vehicles" ? vehicleAttributes : reportType === "drivers" ? driverAttributes : companyAttributes;
+      const attrName = allAttrs.find((a: any) => a.id === attrId)?.name || "?";
+      const allLinks = reportType === "vehicles" ? vehicleAttrLinks : reportType === "drivers" ? driverAttrLinks : companyAttrLinks;
+      const idField = reportType === "vehicles" ? "vehicle_id" : reportType === "drivers" ? "driver_id" : "company_id";
+
+      let hasCount = 0;
+      let notCount = 0;
+      filteredData.forEach((row: any) => {
+        const has = allLinks.some((l: any) => l[idField] === row.id && l.attribute_id === attrId);
+        if (has) hasCount++;
+        else notCount++;
+      });
+      const sorted = [
+        { name: attrName, value: hasCount },
+        { name: `Ei: ${attrName}`, value: notCount },
+      ].filter(item => item.value > 0);
+      return sorted;
+    }
+
     filteredData.forEach((row: any) => {
       let val = row[chartField] || "Tyhjä";
       val = translateValue(chartField, val, deviceTypeMap);
@@ -318,7 +346,7 @@ export default function Reports() {
       return major;
     }
     return sorted;
-  }, [filteredData, chartField, chartType, deviceTypeMap]);
+  }, [filteredData, chartField, chartType, deviceTypeMap, reportType, vehicleAttributes, driverAttributes, companyAttributes, vehicleAttrLinks, driverAttrLinks, companyAttrLinks]);
 
   const exportCSV = async () => {
     if (filteredData.length === 0) { toast.error("Ei dataa vietäväksi"); return; }
@@ -380,7 +408,13 @@ export default function Reports() {
   };
 
   const hasActiveFilters = searchQuery || dateFrom || dateTo || cityFilters.length > 0 || statusFilter || typeFilter || selectedAttributes.length > 0;
-  const availableChartFields = chartFields[reportType] || [];
+  const availableChartFields = useMemo(() => {
+    const base = chartFields[reportType] || [];
+    // Add attribute-based chart fields
+    const attrs = reportType === "vehicles" ? vehicleAttributes : reportType === "drivers" ? driverAttributes : reportType === "companies" ? companyAttributes : [];
+    const attrFields = attrs.map((a: any) => ({ field: `attr_${a.id}`, label: `Attribuutti: ${a.name}` }));
+    return [...base, ...attrFields];
+  }, [reportType, vehicleAttributes, driverAttributes, companyAttributes]);
   const currentAttributes = reportType === "vehicles" ? vehicleAttributes : reportType === "drivers" ? driverAttributes : reportType === "companies" ? companyAttributes : [];
 
   const [citySearch, setCitySearch] = useState("");
