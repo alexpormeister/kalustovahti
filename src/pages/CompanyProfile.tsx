@@ -349,18 +349,31 @@ export default function CompanyProfile() {
               <Card className="glass-card">
                 <CardHeader><CardTitle className="flex items-center gap-2"><Paperclip className="h-5 w-5 text-primary" />Jaetut liitteet</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {sharedAttachments.map((att: any) => (
-                      <div key={att.id} className="flex items-center justify-between p-2 border rounded-md">
-                        <div className="flex items-center gap-2"><Paperclip className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium">{att.name}</span><span className="text-xs text-muted-foreground">({att.file_name})</span></div>
-                        <Button variant="ghost" size="sm" onClick={async () => {
-                          const { data, error } = await supabase.storage.from("shared-attachments").download(att.file_path);
-                          if (error) { toast.error("Virhe"); return; }
-                          const url = URL.createObjectURL(data); const a = document.createElement("a"); a.href = url; a.download = att.file_name; a.click(); URL.revokeObjectURL(url);
-                        }}><Download className="h-4 w-4 mr-1" />Lataa</Button>
-                      </div>
-                    ))}
-                  </div>
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Nimi</TableHead><TableHead>Tiedosto</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {sharedAttachments.map((att: any) => (
+                        <TableRow key={att.id}>
+                          <TableCell className="font-medium">{att.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{att.file_name}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={async () => {
+                                const { data, error } = await supabase.storage.from("shared-attachments").createSignedUrl(att.file_path, 3600);
+                                if (error) { toast.error("Virhe"); return; }
+                                setPreviewUrl(data.signedUrl); setIsPreviewOpen(true);
+                              }}><Eye className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" onClick={async () => {
+                                const { data, error } = await supabase.storage.from("shared-attachments").download(att.file_path);
+                                if (error) { toast.error("Virhe"); return; }
+                                const url = URL.createObjectURL(data); const a = document.createElement("a"); a.href = url; a.download = att.file_name; a.click(); URL.revokeObjectURL(url);
+                              }}><Download className="h-4 w-4" /></Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             )}
