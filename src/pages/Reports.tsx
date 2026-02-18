@@ -52,10 +52,11 @@ const incidentTypeTranslations: Record<string, string> = {
   safety_issue: "Turvallisuus", billing_issue: "Laskutus", other: "Muu",
 };
 
-const translateValue = (col: string, val: any): string => {
+const translateValue = (col: string, val: any, deviceTypeMap?: Map<string, string>): string => {
   if (val === null || val === undefined) return "—";
   if (col === "status" || col === "contract_status") return statusTranslations[val] || val;
   if (col === "incident_type") return incidentTypeTranslations[val] || val;
+  if (col === "device_type" && deviceTypeMap) return deviceTypeMap.get(val) || val;
   return String(val);
 };
 
@@ -76,6 +77,9 @@ const chartFields: Record<string, { field: string; label: string }[]> = {
   quality_incidents: [{ field: "status", label: "Tila" }, { field: "incident_type", label: "Tyyppi" }],
   documents: [{ field: "status", label: "Tila" }],
 };
+
+// Company attributes for reports
+const companyAttributeFields = true;
 
 const DEFAULT_CHART_COLORS = [
   "#FFDC29", "#E5C624", "#CCB01F", "#B39A1A",
@@ -98,7 +102,7 @@ export default function Reports() {
   const [chartColors, setChartColors] = useState<string[]>([...DEFAULT_CHART_COLORS]);
   const chartRef = useRef<HTMLDivElement>(null);
 
-  // Fetch municipalities for driver city filter
+  // Fetch municipalities for driver/vehicle city filter
   const { data: municipalities = [] } = useQuery({
     queryKey: ["municipalities-report"],
     queryFn: async () => {
@@ -106,8 +110,33 @@ export default function Reports() {
       if (error) throw error;
       return data;
     },
-    enabled: reportType === "drivers",
+    enabled: reportType === "drivers" || reportType === "vehicles",
   });
+
+  // Fetch device types for hardware display names
+  const { data: deviceTypes = [] } = useQuery({
+    queryKey: ["device-types-report"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("device_types").select("name, display_name").order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+    enabled: reportType === "hardware",
+  });
+
+  // Company attributes for reports
+  const { data: companyAttributes = [] } = useQuery({
+    queryKey: ["company-attributes-report"],
+    queryFn: async () => { const { data, error } = await supabase.from("company_attributes").select("id, name").order("name"); if (error) throw error; return data; },
+    enabled: reportType === "companies",
+  });
+  const { data: companyAttrLinks = [] } = useQuery({
+    queryKey: ["company-attr-links-report"],
+    queryFn: async () => { const { data, error } = await supabase.from("company_attribute_links").select("company_id, attribute_id"); if (error) throw error; return data; },
+    enabled: reportType === "companies" && selectedAttributes.length > 0,
+  });
+
+  const deviceTypeMap = new Map(deviceTypes.map((dt: any) => [dt.name, dt.display_name]));
 
   const { data: reportData = [], isLoading } = useQuery({
     queryKey: ["report", reportType],
@@ -188,11 +217,9 @@ export default function Reports() {
   const labels = columnLabels[reportType] || {};
 
   const uniqueCities = useMemo(() => {
-    if (reportType === "drivers") return municipalities.map((m: any) => m.name);
-    if (reportType !== "vehicles") return [];
-    const cities = new Set(reportData.filter((r: any) => r.city).map((r: any) => r.city));
-    return Array.from(cities).sort();
-  }, [reportData, reportType, municipalities]);
+    if (reportType === "drivers" || reportType === "vehicles") return municipalities.map((m: any) => m.name);
+    return [];
+  }, [reportType, municipalities]);
 
   const uniqueStatuses = useMemo(() => {
     const field = reportType === "companies" ? "contract_status" : "status";
@@ -201,9 +228,15 @@ export default function Reports() {
   }, [reportData, reportType]);
 
   const uniqueTypes = useMemo(() => {
-    if (reportType !== "quality_incidents") return [];
-    const types = new Set(reportData.filter((r: any) => r.incident_type).map((r: any) => r.incident_type));
-    return Array.from(types).sort();
+    if (reportType === "quality_incidents") {
+      const types = new Set(reportData.filter((r: any) => r.incident_type).map((r: any) => r.incident_type));
+      return Array.from(types).sort();
+    }
+    if (reportType === "hardware") {
+      const types = new Set(reportData.filter((r: any) => r.device_type).map((r: any) => r.device_type));
+      return Array.from(types).sort();
+    }
+    return [];
   }, [reportData, reportType]);
 
   const filteredData = useMemo(() => {
@@ -231,7 +264,7 @@ export default function Reports() {
     const statusField = reportType === "companies" ? "contract_status" : "status";
     if (statusFilter) data = data.filter((row: any) => row[statusField] === statusFilter);
     if (typeFilter && reportType === "quality_incidents") data = data.filter((row: any) => row.incident_type === typeFilter);
-
+    if (typeFilter && reportType === "hardware") data = data.filter((row: any) => row.device_type === typeFilter);
     if (reportType === "vehicles" && selectedAttributes.length > 0) {
       data = data.filter((row: any) => {
         const vLinks = vehicleAttrLinks.filter((l: any) => l.vehicle_id === row.id);
@@ -241,6 +274,13 @@ export default function Reports() {
     if (reportType === "drivers" && selectedAttributes.length > 0) {
       data = data.filter((row: any) => {
         const links = driverAttrLinks.filter((l: any) => l.driver_id === row.id);
+        return selectedAttributes.every(a => links.some((l: any) => l.attribute_id === a));
+      });
+    }
+
+    if (reportType === "companies" && selectedAttributes.length > 0) {
+      data = data.filter((row: any) => {
+        const links = companyAttrLinks.filter((l: any) => l.company_id === row.id);
         return selectedAttributes.every(a => links.some((l: any) => l.attribute_id === a));
       });
     }
@@ -260,11 +300,21 @@ export default function Reports() {
     const counts: Record<string, number> = {};
     filteredData.forEach((row: any) => {
       let val = row[chartField] || "Tyhjä";
-      val = translateValue(chartField, val);
+      val = translateValue(chartField, val, deviceTypeMap);
       counts[val] = (counts[val] || 0) + 1;
     });
-    return Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [filteredData, chartField]);
+    const sorted = Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    // For pie charts, combine items under 5% into "Muut"
+    if (chartType === "pie") {
+      const total = sorted.reduce((sum, item) => sum + item.value, 0);
+      const threshold = total * 0.05;
+      const major = sorted.filter(item => item.value >= threshold);
+      const minorSum = sorted.filter(item => item.value < threshold).reduce((sum, item) => sum + item.value, 0);
+      if (minorSum > 0) major.push({ name: "Muut", value: minorSum });
+      return major;
+    }
+    return sorted;
+  }, [filteredData, chartField, chartType, deviceTypeMap]);
 
   const exportCSV = async () => {
     if (filteredData.length === 0) { toast.error("Ei dataa vietäväksi"); return; }
@@ -276,7 +326,7 @@ export default function Reports() {
         if (c.includes("_at") || c === "incident_date" || c === "valid_from" || c === "valid_until") {
           try { return format(new Date(val), "d.M.yyyy HH:mm", { locale: fi }); } catch { return val; }
         }
-        return translateValue(c, val).replace(/;/g, ",");
+        return translateValue(c, val, deviceTypeMap).replace(/;/g, ",");
       }).join(";")
     );
     const csv = "\uFEFF" + [header, ...rows].join("\n");
@@ -327,8 +377,9 @@ export default function Reports() {
 
   const hasActiveFilters = searchQuery || dateFrom || dateTo || cityFilters.length > 0 || statusFilter || typeFilter || selectedAttributes.length > 0;
   const availableChartFields = chartFields[reportType] || [];
-  const currentAttributes = reportType === "vehicles" ? vehicleAttributes : reportType === "drivers" ? driverAttributes : [];
+  const currentAttributes = reportType === "vehicles" ? vehicleAttributes : reportType === "drivers" ? driverAttributes : reportType === "companies" ? companyAttributes : [];
 
+  const [citySearch, setCitySearch] = useState("");
   const toggleCityFilter = (city: string) => {
     setCityFilters(prev => prev.includes(city) ? prev.filter(c => c !== city) : [...prev, city]);
   };

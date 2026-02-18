@@ -297,11 +297,15 @@ export function AttributeManager() {
       <TabsList>
         <TabsTrigger value="vehicle" className="gap-2">
           <Tag className="h-4 w-4" />
-          Ajoneuvo-attribuutit
+          Ajoneuvo
         </TabsTrigger>
         <TabsTrigger value="driver" className="gap-2">
           <Users className="h-4 w-4" />
-          Kuljettaja-attribuutit
+          Kuljettaja
+        </TabsTrigger>
+        <TabsTrigger value="company" className="gap-2">
+          <Tag className="h-4 w-4" />
+          Autoilija
         </TabsTrigger>
       </TabsList>
 
@@ -324,6 +328,17 @@ export function AttributeManager() {
           linkTableName="driver_attribute_links"
           queryKey="driver-attributes-admin"
           entityLabel="Kuljettajia"
+        />
+      </TabsContent>
+
+      <TabsContent value="company">
+        <AttributeSection
+          title="Autoilija-attribuutit"
+          icon={Tag}
+          tableName="company_attributes"
+          linkTableName="company_attribute_links"
+          queryKey="company-attributes-admin"
+          entityLabel="Autoilijoita"
         />
       </TabsContent>
     </Tabs>

@@ -2,13 +2,14 @@ import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DeviceTypeManager } from "@/components/settings/DeviceTypeManager";
 import { DocumentTypeManager } from "@/components/settings/DocumentTypeManager";
+import { SharedAttachmentManager } from "@/components/settings/SharedAttachmentManager";
 import { DataImportExport } from "@/components/settings/DataImportExport";
 import { AuditLogViewer } from "@/components/settings/AuditLogViewer";
 import { FleetManager } from "@/components/settings/FleetManager";
 import { CompanyInfoManager } from "@/components/settings/CompanyInfoManager";
 import { MunicipalityManager } from "@/components/settings/MunicipalityManager";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Eye, EyeOff, Building2, Layers, Cpu, FileText, MapPin, Database, History, Tag, Palette } from "lucide-react";
+import { Eye, EyeOff, Building2, Layers, Cpu, FileText, MapPin, Database, History, Tag, Palette, Paperclip } from "lucide-react";
 import { AttributeManager } from "@/components/settings/AttributeManager";
 import { ThemeColorPicker } from "@/components/settings/ThemeColorPicker";
 import { ProtectedPage } from "@/components/auth/ProtectedPage";
@@ -73,6 +74,10 @@ export default function Maintenance() {
 
             <CollapsibleSection title="Dokumenttityypit" icon={<FileText className="h-5 w-5 text-primary" />}>
               <DocumentTypeManager />
+            </CollapsibleSection>
+
+            <CollapsibleSection title="Liitteet" icon={<Paperclip className="h-5 w-5 text-primary" />}>
+              <SharedAttachmentManager />
             </CollapsibleSection>
 
             <CollapsibleSection title="Kunnat" icon={<MapPin className="h-5 w-5 text-primary" />}>
