@@ -110,6 +110,70 @@ export type Database = {
         }
         Relationships: []
       }
+      company_attribute_links: {
+        Row: {
+          attribute_id: string
+          company_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          attribute_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          attribute_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_attribute_links_attribute_id_fkey"
+            columns: ["attribute_id"]
+            isOneToOne: false
+            referencedRelation: "company_attributes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_attribute_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_attribute_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_attributes: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       company_contracts: {
         Row: {
           company_id: string
@@ -855,6 +919,42 @@ export type Database = {
           is_system_role?: boolean
           name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      shared_attachments: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_type: string
+          id: string
+          name: string
+          scope: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_type?: string
+          id?: string
+          name: string
+          scope?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          name?: string
+          scope?: string
+          uploaded_by?: string | null
         }
         Relationships: []
       }

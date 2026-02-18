@@ -192,7 +192,7 @@ function DocTable({ data, navigatePrefix, icon: Icon }: { data: DocStatus[]; nav
                     ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`${navigatePrefix}/${status.entity.id}`)}>
+                    <Button variant="ghost" size="sm" onClick={() => navigate(`${navigatePrefix}/${status.entity.id}?tab=documents`)}>
                       <ExternalLink className="h-4 w-4 mr-1" />Avaa
                     </Button>
                   </TableCell>

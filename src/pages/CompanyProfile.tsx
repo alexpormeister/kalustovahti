@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import {
   ArrowLeft, Building2, FileText, Upload, Download, Eye, Calendar,
-  AlertTriangle, CheckCircle2, Clock, XCircle, Car, User, Phone, Mail, MapPin, Trash2, Pencil, Save, X,
+  AlertTriangle, CheckCircle2, Clock, XCircle, Car, User, Phone, Mail, MapPin, Trash2, Pencil, Save, X, Tag, Paperclip,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isBefore, addDays } from "date-fns";
@@ -37,6 +37,8 @@ const statusLabels: Record<string, string> = { active: "Voimassa", expired: "Van
 export default function CompanyProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get("tab") || "info";
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -84,6 +86,52 @@ export default function CompanyProfile() {
       return data;
     },
     enabled: !!id,
+  });
+
+  const { data: companyAttributes = [] } = useQuery({
+    queryKey: ["company-profile-attributes", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("company_attribute_links").select("id, attribute:company_attributes(id, name)").eq("company_id", id);
+      if (error) throw error;
+      return data.map((l: any) => ({ linkId: l.id, ...l.attribute }));
+    },
+    enabled: !!id,
+  });
+
+  const { data: allCompanyAttributes = [] } = useQuery({
+    queryKey: ["all-company-attributes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("company_attributes").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: sharedAttachments = [] } = useQuery({
+    queryKey: ["shared-attachments-company"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("shared_attachments").select("*").or("scope.eq.all,scope.eq.company").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const addCompanyAttrMutation = useMutation({
+    mutationFn: async (attributeId: string) => {
+      const { error } = await supabase.from("company_attribute_links").insert({ company_id: id, attribute_id: attributeId });
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["company-profile-attributes", id] }); toast.success("Attribuutti lisätty"); },
+    onError: () => toast.error("Virhe lisättäessä attribuuttia"),
+  });
+
+  const removeCompanyAttrMutation = useMutation({
+    mutationFn: async (linkId: string) => {
+      const { error } = await supabase.from("company_attribute_links").delete().eq("id", linkId);
+      if (error) throw error;
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["company-profile-attributes", id] }); toast.success("Attribuutti poistettu"); },
+    onError: () => toast.error("Virhe poistettaessa attribuuttia"),
   });
 
   const updateMutation = useMutation({
@@ -208,7 +256,7 @@ export default function CompanyProfile() {
           </Card>
         )}
 
-        <Tabs defaultValue="info" className="space-y-4">
+        <Tabs defaultValue={defaultTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="info">Tiedot</TabsTrigger>
             <TabsTrigger value="documents">Dokumentit ({documents.length})</TabsTrigger>
@@ -260,9 +308,62 @@ export default function CompanyProfile() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Attributes section */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Tag className="h-5 w-5 text-primary" />Attribuutit</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {companyAttributes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Ei attribuutteja</p>
+                  ) : (
+                    companyAttributes.map((attr: any) => (
+                      <Badge key={attr.id} variant="secondary" className="gap-1">
+                        {attr.name}
+                        <button className="ml-1 hover:text-destructive" onClick={() => removeCompanyAttrMutation.mutate(attr.linkId)}>×</button>
+                      </Badge>
+                    ))
+                  )}
+                </div>
+                {allCompanyAttributes.filter((a: any) => !companyAttributes.some((ca: any) => ca.id === a.id)).length > 0 && (
+                  <Select value="none" onValueChange={(v) => { if (v !== "none") addCompanyAttrMutation.mutate(v); }}>
+                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="Lisää attribuutti" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Valitse attribuutti</SelectItem>
+                      {allCompanyAttributes.filter((a: any) => !companyAttributes.some((ca: any) => ca.id === a.id)).map((a: any) => (
+                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="documents" className="space-y-4">
+
+            {/* Shared attachments */}
+            {sharedAttachments.length > 0 && (
+              <Card className="glass-card">
+                <CardHeader><CardTitle className="flex items-center gap-2"><Paperclip className="h-5 w-5 text-primary" />Jaetut liitteet</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {sharedAttachments.map((att: any) => (
+                      <div key={att.id} className="flex items-center justify-between p-2 border rounded-md">
+                        <div className="flex items-center gap-2"><Paperclip className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium">{att.name}</span><span className="text-xs text-muted-foreground">({att.file_name})</span></div>
+                        <Button variant="ghost" size="sm" onClick={async () => {
+                          const { data, error } = await supabase.storage.from("shared-attachments").download(att.file_path);
+                          if (error) { toast.error("Virhe"); return; }
+                          const url = URL.createObjectURL(data); const a = document.createElement("a"); a.href = url; a.download = att.file_name; a.click(); URL.revokeObjectURL(url);
+                        }}><Download className="h-4 w-4 mr-1" />Lataa</Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             <Card className="glass-card">
               <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Dokumentit ja sopimukset</CardTitle></CardHeader>
               <CardContent>

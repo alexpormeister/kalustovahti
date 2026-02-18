@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -29,6 +29,8 @@ import { fi } from "date-fns/locale";
 export default function DriverProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get("tab") || "info";
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -280,7 +282,7 @@ export default function DriverProfile() {
           <div><h1 className="text-3xl font-bold text-foreground">{driver.full_name}</h1><p className="text-muted-foreground">Kuljettaja #{driver.driver_number}</p></div>
         </div>
 
-        <Tabs defaultValue="info" className="space-y-4">
+        <Tabs defaultValue={defaultTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="info">Tiedot</TabsTrigger>
             <TabsTrigger value="documents">Dokumentit ({documents.length})</TabsTrigger>
