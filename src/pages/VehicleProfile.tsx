@@ -20,6 +20,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { ArrowLeft, Car, History, Tag, Building2, Smartphone, CreditCard, Pencil, Save, X, Layers, Plus, ExternalLink } from "lucide-react";
+import { CompanySearchSelect } from "@/components/shared/CompanySearchSelect";
 import { format } from "date-fns";
 import { fi } from "date-fns/locale";
 import { toast } from "sonner";
@@ -312,13 +313,10 @@ export default function VehicleProfile() {
                       <div><Label>Merkki</Label><Input value={editForm.brand} onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })} /></div>
                       <div><Label>Malli</Label><Input value={editForm.model} onChange={(e) => setEditForm({ ...editForm, model: e.target.value })} /></div>
                       <div><Label>Yritys</Label>
-                        <Select value={editForm.company_id || "none"} onValueChange={(v) => setEditForm({ ...editForm, company_id: v === "none" ? "" : v })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Ei yritystä</SelectItem>
-                            {companies.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                        <CompanySearchSelect
+                          value={editForm.company_id || ""}
+                          onChange={(v) => setEditForm({ ...editForm, company_id: v })}
+                        />
                       </div>
                       <div><Label>Kaupunki</Label><Input value={editForm.city} onChange={(e) => setEditForm({ ...editForm, city: e.target.value })} placeholder="Esim. Helsinki" /></div>
                       <div><Label>Vuosimalli</Label><Input type="number" value={editForm.year_model || ""} onChange={(e) => setEditForm({ ...editForm, year_model: e.target.value })} placeholder="Esim. 2024" min="1900" max="2099" /></div>
@@ -345,8 +343,6 @@ export default function VehicleProfile() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div><Label>Maksupääte-ID</Label><Input value={editForm.payment_terminal_id} onChange={(e) => setEditForm({ ...editForm, payment_terminal_id: e.target.value })} /></div>
-                      <div><Label>Mittarin sarjanumero</Label><Input value={editForm.meter_serial_number} onChange={(e) => setEditForm({ ...editForm, meter_serial_number: e.target.value })} /></div>
                     </div>
 
                     {/* Fleets */}
