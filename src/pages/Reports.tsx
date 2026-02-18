@@ -217,9 +217,13 @@ export default function Reports() {
   const labels = columnLabels[reportType] || {};
 
   const uniqueCities = useMemo(() => {
-    if (reportType === "drivers" || reportType === "vehicles") return municipalities.map((m: any) => m.name);
+    if (reportType === "vehicles") {
+      const cities = [...new Set((reportData || []).map((r: any) => r.city).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "fi"));
+      return cities;
+    }
+    if (reportType === "drivers") return municipalities.map((m: any) => m.name);
     return [];
-  }, [reportType, municipalities]);
+  }, [reportType, municipalities, reportData]);
 
   const uniqueStatuses = useMemo(() => {
     const field = reportType === "companies" ? "contract_status" : "status";
