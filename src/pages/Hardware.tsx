@@ -21,7 +21,7 @@ import {
 import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
-import { Plus, Search, Smartphone, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Search, Smartphone, Check, ChevronsUpDown, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { usePagination } from "@/hooks/usePagination";
@@ -544,6 +544,7 @@ export default function Hardware() {
               <div className="text-center py-8 text-muted-foreground">Ei laitteita</div>
             ) : (
               <>
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -558,7 +559,7 @@ export default function Hardware() {
                   </TableHeader>
                   <TableBody>
                     {paginatedDevices.map((device) => (
-                      <TableRow key={device.id}>
+                      <TableRow key={device.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEdit(device)}>
                         <TableCell className="font-mono font-medium">{device.serial_number}</TableCell>
                         {currentDeviceType?.has_sim && (
                           <TableCell>{device.sim_number || "—"}</TableCell>
@@ -574,12 +575,15 @@ export default function Hardware() {
                           <Badge className={statusColors[device.status]}>{statusLabels[device.status]}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(device)}>Muokkaa</Button>
+                          <div onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8"><ExternalLink className="h-4 w-4" /></Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+                </div>
                 <PaginationControls
                   currentPage={currentPage} totalPages={totalPages}
                   onPageChange={setCurrentPage} startIndex={startIndex}
