@@ -21,6 +21,7 @@ import {
 import {
   ArrowLeft, User, FileText, Upload, Download, Eye, Calendar, History,
   Phone, Mail, MapPin, Trash2, Shield, EyeOff, Pencil, Save, X, Tag,
+  AlertTriangle, Paperclip,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isBefore, addDays } from "date-fns";
@@ -95,6 +96,15 @@ export default function DriverProfile() {
     queryKey: ["all-driver-attributes"],
     queryFn: async () => {
       const { data, error } = await supabase.from("driver_attributes").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: sharedAttachments = [] } = useQuery({
+    queryKey: ["shared-attachments-driver"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("shared_attachments").select("*").or("scope.eq.all,scope.eq.driver").order("name");
       if (error) throw error;
       return data;
     },
@@ -384,6 +394,46 @@ export default function DriverProfile() {
           </TabsContent>
 
           <TabsContent value="documents" className="space-y-4">
+            {/* Missing required documents warning */}
+            {(() => {
+              const requiredTypes = documentTypes.filter((dt: any) => dt.is_required);
+              const missingDocs = requiredTypes.filter((dt: any) => !documents.some((doc: any) => doc.document_type_id === dt.id && getDocumentStatus(doc) !== "expired"));
+              return missingDocs.length > 0 ? (
+                <Card className="border-destructive bg-destructive/10">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-destructive">Puuttuvat pakolliset dokumentit:</p>
+                        <ul className="mt-1 text-sm text-destructive/80">{missingDocs.map((dt: any) => <li key={dt.id}>• {dt.name}</li>)}</ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null;
+            })()}
+
+            {/* Shared attachments */}
+            {sharedAttachments.length > 0 && (
+              <Card className="glass-card">
+                <CardHeader><CardTitle className="flex items-center gap-2"><Paperclip className="h-5 w-5 text-primary" />Jaetut liitteet</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {sharedAttachments.map((att: any) => (
+                      <div key={att.id} className="flex items-center justify-between p-2 border rounded-md">
+                        <div className="flex items-center gap-2"><Paperclip className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium">{att.name}</span><span className="text-xs text-muted-foreground">({att.file_name})</span></div>
+                        <Button variant="ghost" size="sm" onClick={async () => {
+                          const { data, error } = await supabase.storage.from("shared-attachments").download(att.file_path);
+                          if (error) { toast.error("Virhe"); return; }
+                          const url = URL.createObjectURL(data); const a = document.createElement("a"); a.href = url; a.download = att.file_name; a.click(); URL.revokeObjectURL(url);
+                        }}><Download className="h-4 w-4 mr-1" />Lataa</Button>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="glass-card">
               <CardHeader>
                 <div className="flex items-center justify-between">
