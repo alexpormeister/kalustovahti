@@ -108,6 +108,8 @@ export default function Reports() {
   const [co2Max, setCo2Max] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [chartField, setChartField] = useState("");
+  const [pieCombineEnabled, setPieCombineEnabled] = useState(true);
+  const [pieCombineThreshold, setPieCombineThreshold] = useState("5");
   const [chartType, setChartType] = useState<"bar" | "pie">("bar");
   const [chartColors, setChartColors] = useState<string[]>([...DEFAULT_CHART_COLORS]);
   const chartRef = useRef<HTMLDivElement>(null);
@@ -354,17 +356,18 @@ export default function Reports() {
       counts[val] = (counts[val] || 0) + 1;
     });
     const sorted = Object.entries(counts).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-    // For pie charts, combine items under 5% into "Muut"
-    if (chartType === "pie") {
+    // For pie charts, optionally combine small slices
+    if (chartType === "pie" && pieCombineEnabled) {
       const total = sorted.reduce((sum, item) => sum + item.value, 0);
-      const threshold = total * 0.05;
+      const pct = parseFloat(pieCombineThreshold) || 5;
+      const threshold = total * (pct / 100);
       const major = sorted.filter(item => item.value >= threshold);
       const minorSum = sorted.filter(item => item.value < threshold).reduce((sum, item) => sum + item.value, 0);
       if (minorSum > 0) major.push({ name: "Muut", value: minorSum });
       return major;
     }
     return sorted;
-  }, [filteredData, chartField, chartType, deviceTypeMap, reportType, vehicleAttributes, driverAttributes, companyAttributes, vehicleAttrLinks, driverAttrLinks, companyAttrLinks]);
+  }, [filteredData, chartField, chartType, pieCombineEnabled, pieCombineThreshold, deviceTypeMap, reportType, vehicleAttributes, driverAttributes, companyAttributes, vehicleAttrLinks, driverAttrLinks, companyAttrLinks]);
 
   const exportCSV = async () => {
     if (filteredData.length === 0) { toast.error("Ei dataa vietäväksi"); return; }
@@ -661,6 +664,14 @@ export default function Reports() {
                       <Button variant={chartType === "bar" ? "default" : "ghost"} size="sm" onClick={() => setChartType("bar")} className="rounded-r-none"><BarChart3 className="h-4 w-4" /></Button>
                       <Button variant={chartType === "pie" ? "default" : "ghost"} size="sm" onClick={() => setChartType("pie")} className="rounded-l-none"><PieChart className="h-4 w-4" /></Button>
                     </div>
+                    {chartType === "pie" && (
+                      <div className="flex items-center gap-2">
+                        <Checkbox id="pie-combine" checked={pieCombineEnabled} onCheckedChange={(v) => setPieCombineEnabled(!!v)} />
+                        <label htmlFor="pie-combine" className="text-sm cursor-pointer whitespace-nowrap">Yhdistä alle</label>
+                        <Input type="number" value={pieCombineThreshold} onChange={(e) => setPieCombineThreshold(e.target.value)} className="w-16 h-8 text-sm" min="1" max="50" disabled={!pieCombineEnabled} />
+                        <span className="text-sm text-muted-foreground">%</span>
+                      </div>
+                    )}
                     {chartField && chartData.length > 0 && (
                       <Button variant="outline" size="sm" onClick={exportChartImage} className="gap-1"><Image className="h-4 w-4" />Lataa kuva</Button>
                     )}
