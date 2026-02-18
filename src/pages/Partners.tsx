@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Building2, Plus, Search, ExternalLink, Filter, ChevronsUpDown } from "lucide-react";
+import { Building2, Plus, Search, ExternalLink, Filter, ChevronsUpDown, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { usePagination } from "@/hooks/usePagination";
@@ -59,6 +59,7 @@ export default function Partners() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [businessIdError, setBusinessIdError] = useState<string | null>(null);
+  const [selectedAttributeIds, setSelectedAttributeIds] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: "", business_id: "", address: "", contact_person: "",
     contact_email: "", contact_phone: "", contract_status: "active" as ContractStatus,
@@ -83,6 +84,34 @@ export default function Partners() {
       return data;
     },
   });
+
+  // Company attributes
+  const { data: companyAttributes = [] } = useQuery({
+    queryKey: ["company-attributes"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("company_attributes").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: companyAttrLinks = [] } = useQuery({
+    queryKey: ["company-attr-links", selectedCompany?.id],
+    queryFn: async () => {
+      if (!selectedCompany) return [];
+      const { data, error } = await supabase.from("company_attribute_links").select("attribute_id").eq("company_id", selectedCompany.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedCompany,
+  });
+
+  // Sync selectedAttributeIds when editing a company
+  useEffect(() => {
+    if (selectedCompany && companyAttrLinks.length >= 0) {
+      setSelectedAttributeIds(companyAttrLinks.map((l) => l.attribute_id));
+    }
+  }, [selectedCompany, companyAttrLinks]);
 
   const { data: auditLogs = [] } = useQuery({
     queryKey: ["audit-logs", selectedCompany?.id],
@@ -112,8 +141,15 @@ export default function Partners() {
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
       const { error } = await supabase.from("companies").update(data).eq("id", id);
       if (error) throw error;
+      // Update attribute links
+      await supabase.from("company_attribute_links").delete().eq("company_id", id);
+      if (selectedAttributeIds.length > 0) {
+        const links = selectedAttributeIds.map((attribute_id) => ({ company_id: id, attribute_id }));
+        const { error: linkError } = await supabase.from("company_attribute_links").insert(links);
+        if (linkError) throw linkError;
+      }
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["partners"] }); toast.success("Autoilija päivitetty onnistuneesti"); setSelectedCompany(null); resetForm(); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["partners"] }); queryClient.invalidateQueries({ queryKey: ["company-attr-links"] }); toast.success("Autoilija päivitetty onnistuneesti"); setSelectedCompany(null); resetForm(); },
     onError: (error: any) => {
       if (error?.message?.includes("companies_name_unique")) { toast.error("Tämän niminen yritys on jo järjestelmässä"); setNameError("Yritys on jo järjestelmässä"); }
       else if (error?.message?.includes("companies_business_id_unique")) { toast.error("Tällä Y-tunnuksella on jo yritys järjestelmässä"); setBusinessIdError("Y-tunnus on jo käytössä"); }
@@ -123,7 +159,7 @@ export default function Partners() {
 
   const resetForm = () => {
     setFormData({ name: "", business_id: "", address: "", contact_person: "", contact_email: "", contact_phone: "", contract_status: "active" });
-    setNameError(null); setBusinessIdError(null);
+    setNameError(null); setBusinessIdError(null); setSelectedAttributeIds([]);
   };
 
   const checkDuplicateName = (name: string) => {
@@ -182,6 +218,23 @@ export default function Partners() {
           </Select>
         </div>
       </div>
+      {selectedCompany && companyAttributes.length > 0 && (
+        <div>
+          <Label className="flex items-center gap-2 mb-2"><Tag className="h-4 w-4" />Attribuutit</Label>
+          <div className="flex flex-wrap gap-3">
+            {companyAttributes.map((attr) => (
+              <div key={attr.id} className="flex items-center gap-2">
+                <Checkbox
+                  id={`edit-attr-${attr.id}`}
+                  checked={selectedAttributeIds.includes(attr.id)}
+                  onCheckedChange={(checked) => setSelectedAttributeIds(prev => checked ? [...prev, attr.id] : prev.filter(id => id !== attr.id))}
+                />
+                <label htmlFor={`edit-attr-${attr.id}`} className="text-sm cursor-pointer">{attr.name}</label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={() => { setIsAddDialogOpen(false); setSelectedCompany(null); resetForm(); }}>Peruuta</Button>
         <Button type="submit">Tallenna</Button>
