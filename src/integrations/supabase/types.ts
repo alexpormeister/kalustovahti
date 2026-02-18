@@ -346,6 +346,49 @@ export type Database = {
           },
         ]
       }
+      company_shared_attachment_links: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          shared_attachment_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          shared_attachment_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          shared_attachment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_shared_attachment_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_shared_attachment_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_shared_attachment_links_shared_attachment_id_fkey"
+            columns: ["shared_attachment_id"]
+            isOneToOne: false
+            referencedRelation: "shared_attachments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_links: {
         Row: {
           created_at: string | null
@@ -572,6 +615,49 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_shared_attachment_links: {
+        Row: {
+          created_at: string
+          driver_id: string
+          id: string
+          shared_attachment_id: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          id?: string
+          shared_attachment_id: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          id?: string
+          shared_attachment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_shared_attachment_links_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_shared_attachment_links_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_shared_attachment_links_shared_attachment_id_fkey"
+            columns: ["shared_attachment_id"]
+            isOneToOne: false
+            referencedRelation: "shared_attachments"
             referencedColumns: ["id"]
           },
         ]
