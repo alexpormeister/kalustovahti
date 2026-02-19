@@ -79,48 +79,77 @@ Deno.serve(async (req) => {
     if (permissions?.read_drivers) {
       const q = supabaseAdmin
         .from("drivers")
-        .select("id, driver_number, full_name, phone, email, city, province, status, driver_license_valid_until, company_id");
+        .select("id, driver_number, full_name, phone, email, city, province, status, driver_license_valid_until, company_id, company:companies(name)");
       const { data, error } = await withCompanyFilter(q);
       if (error) throw error;
-      result.drivers = data;
+      result.drivers = (data || []).map((d: any) => ({
+        ...d,
+        company_name: d.company?.name || null,
+        company: undefined,
+      }));
     }
 
     // Vehicles
     if (permissions?.read_vehicles) {
       const q = supabaseAdmin
         .from("vehicles")
-        .select("id, vehicle_number, registration_number, brand, model, year_model, fuel_type, status, city, company_id");
+        .select("id, vehicle_number, registration_number, brand, model, year_model, fuel_type, status, city, company_id, company:companies(name)");
       const { data, error } = await withCompanyFilter(q);
       if (error) throw error;
-      result.vehicles = data;
+      result.vehicles = (data || []).map((v: any) => ({
+        ...v,
+        company_name: v.company?.name || null,
+        company: undefined,
+      }));
     }
 
     // Hardware
     if (permissions?.read_hardware) {
       const q = supabaseAdmin
         .from("hardware_devices")
-        .select("id, serial_number, device_type, sim_number, status, vehicle_id, company_id, description");
+        .select("id, serial_number, device_type, sim_number, status, vehicle_id, company_id, description, vehicle:vehicles(vehicle_number, registration_number), company:companies(name)");
       const { data, error } = await withCompanyFilter(q);
       if (error) throw error;
-      result.hardware = data;
+      result.hardware = (data || []).map((h: any) => ({
+        ...h,
+        vehicle_number: h.vehicle?.vehicle_number || null,
+        vehicle_registration: h.vehicle?.registration_number || null,
+        company_name: h.company?.name || null,
+        vehicle: undefined,
+        company: undefined,
+      }));
     }
 
     // Documents (company + driver)
     if (permissions?.read_documents) {
       const q = supabaseAdmin
         .from("company_documents")
-        .select("id, file_name, status, valid_from, valid_until, company_id, document_type_id");
+        .select("id, file_name, status, valid_from, valid_until, company_id, document_type_id, company:companies(name), document_type:document_types(name)");
       const { data, error } = await withCompanyFilter(q);
       if (error) throw error;
-      result.company_documents = data;
+      result.company_documents = (data || []).map((d: any) => ({
+        ...d,
+        company_name: d.company?.name || null,
+        document_type_name: d.document_type?.name || null,
+        company: undefined,
+        document_type: undefined,
+      }));
 
-      // Driver documents - need to join through drivers for company filter
+      // Driver documents
+      const ddSelect = "id, file_name, status, valid_from, valid_until, driver_id, document_type_id, driver:drivers(driver_number, full_name), document_type:document_types(name)";
       if (isAllCompanies) {
         const { data: dd, error: dde } = await supabaseAdmin
           .from("driver_documents")
-          .select("id, file_name, status, valid_from, valid_until, driver_id, document_type_id");
+          .select(ddSelect);
         if (dde) throw dde;
-        result.driver_documents = dd;
+        result.driver_documents = (dd || []).map((d: any) => ({
+          ...d,
+          driver_number: d.driver?.driver_number || null,
+          driver_name: d.driver?.full_name || null,
+          document_type_name: d.document_type?.name || null,
+          driver: undefined,
+          document_type: undefined,
+        }));
       } else {
         const { data: driverIds } = await supabaseAdmin
           .from("drivers")
@@ -130,10 +159,17 @@ Deno.serve(async (req) => {
           const ids = driverIds.map((d: any) => d.id);
           const { data: dd, error: dde } = await supabaseAdmin
             .from("driver_documents")
-            .select("id, file_name, status, valid_from, valid_until, driver_id, document_type_id")
+            .select(ddSelect)
             .in("driver_id", ids);
           if (dde) throw dde;
-          result.driver_documents = dd;
+          result.driver_documents = (dd || []).map((d: any) => ({
+            ...d,
+            driver_number: d.driver?.driver_number || null,
+            driver_name: d.driver?.full_name || null,
+            document_type_name: d.document_type?.name || null,
+            driver: undefined,
+            document_type: undefined,
+          }));
         } else {
           result.driver_documents = [];
         }
@@ -144,11 +180,18 @@ Deno.serve(async (req) => {
     if (permissions?.read_quality) {
       const q = supabaseAdmin
         .from("quality_incidents")
-        .select("id, incident_type, incident_date, status, description, action_taken, driver_id, vehicle_id, source");
-      // Quality incidents don't have direct company_id, filter via vehicle/driver if needed
+        .select("id, incident_type, incident_date, status, description, action_taken, driver_id, vehicle_id, source, driver:drivers(driver_number, full_name), vehicle:vehicles(vehicle_number, registration_number)");
       const { data, error } = await q;
       if (error) throw error;
-      result.quality_incidents = data;
+      result.quality_incidents = (data || []).map((qi: any) => ({
+        ...qi,
+        driver_number: qi.driver?.driver_number || null,
+        driver_name: qi.driver?.full_name || null,
+        vehicle_number: qi.vehicle?.vehicle_number || null,
+        vehicle_registration: qi.vehicle?.registration_number || null,
+        driver: undefined,
+        vehicle: undefined,
+      }));
     }
 
     // Fleets
