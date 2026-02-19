@@ -262,9 +262,7 @@ export default function QualityControl() {
     ? vehicles.filter(v => v.company_id === formData.company_id)
     : vehicles;
 
-  const filteredDriversForForm = formData.company_id
-    ? driversData.filter((d: any) => d.company_id === formData.company_id)
-    : driversData;
+  const filteredDriversForForm = driversData;
 
   const filteredIncidents = useMemo(() => {
     return incidents.filter((incident) => {
