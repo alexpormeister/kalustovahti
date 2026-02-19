@@ -18,7 +18,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Extract API key from Authorization header or query param
     const url = new URL(req.url);
     let apiKey = url.searchParams.get("api_key");
     const authHeader = req.headers.get("Authorization");
@@ -39,13 +38,11 @@ Deno.serve(async (req) => {
 
     const keyHash = await sha256(apiKey);
 
-    // Use service role to validate key (bypasses RLS)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Validate API key
     const { data: keyData, error: keyError } = await supabaseAdmin
       .rpc("validate_api_key", { p_key_hash: keyHash });
 
@@ -61,28 +58,112 @@ Deno.serve(async (req) => {
     // Update last_used_at
     await supabaseAdmin.rpc("touch_api_key", { p_key_hash: keyHash });
 
-    const result: Record<string, unknown> = { company_id };
+    const result: Record<string, unknown> = {};
+    const isAllCompanies = !company_id;
 
-    // Fetch drivers if permitted
-    if (permissions?.read_drivers) {
-      const { data: drivers, error: driversError } = await supabaseAdmin
-        .from("drivers")
-        .select("id, driver_number, full_name, phone, email, city, province, status, driver_license_valid_until")
-        .eq("company_id", company_id);
-
-      if (driversError) throw driversError;
-      result.drivers = drivers;
+    if (isAllCompanies) {
+      result.scope = "all_companies";
+    } else {
+      result.company_id = company_id;
     }
 
-    // Fetch vehicles if permitted
-    if (permissions?.read_vehicles) {
-      const { data: vehicles, error: vehiclesError } = await supabaseAdmin
-        .from("vehicles")
-        .select("id, vehicle_number, registration_number, brand, model, year_model, fuel_type, status, city")
-        .eq("company_id", company_id);
+    // Helper to build query with optional company filter
+    const withCompanyFilter = (query: any, companyCol = "company_id") => {
+      if (!isAllCompanies) {
+        return query.eq(companyCol, company_id);
+      }
+      return query;
+    };
 
-      if (vehiclesError) throw vehiclesError;
-      result.vehicles = vehicles;
+    // Drivers
+    if (permissions?.read_drivers) {
+      const q = supabaseAdmin
+        .from("drivers")
+        .select("id, driver_number, full_name, phone, email, city, province, status, driver_license_valid_until, company_id");
+      const { data, error } = await withCompanyFilter(q);
+      if (error) throw error;
+      result.drivers = data;
+    }
+
+    // Vehicles
+    if (permissions?.read_vehicles) {
+      const q = supabaseAdmin
+        .from("vehicles")
+        .select("id, vehicle_number, registration_number, brand, model, year_model, fuel_type, status, city, company_id");
+      const { data, error } = await withCompanyFilter(q);
+      if (error) throw error;
+      result.vehicles = data;
+    }
+
+    // Hardware
+    if (permissions?.read_hardware) {
+      const q = supabaseAdmin
+        .from("hardware_devices")
+        .select("id, serial_number, device_type, sim_number, status, vehicle_id, company_id, description");
+      const { data, error } = await withCompanyFilter(q);
+      if (error) throw error;
+      result.hardware = data;
+    }
+
+    // Documents (company + driver)
+    if (permissions?.read_documents) {
+      const q = supabaseAdmin
+        .from("company_documents")
+        .select("id, file_name, status, valid_from, valid_until, company_id, document_type_id");
+      const { data, error } = await withCompanyFilter(q);
+      if (error) throw error;
+      result.company_documents = data;
+
+      // Driver documents - need to join through drivers for company filter
+      if (isAllCompanies) {
+        const { data: dd, error: dde } = await supabaseAdmin
+          .from("driver_documents")
+          .select("id, file_name, status, valid_from, valid_until, driver_id, document_type_id");
+        if (dde) throw dde;
+        result.driver_documents = dd;
+      } else {
+        const { data: driverIds } = await supabaseAdmin
+          .from("drivers")
+          .select("id")
+          .eq("company_id", company_id);
+        if (driverIds && driverIds.length > 0) {
+          const ids = driverIds.map((d: any) => d.id);
+          const { data: dd, error: dde } = await supabaseAdmin
+            .from("driver_documents")
+            .select("id, file_name, status, valid_from, valid_until, driver_id, document_type_id")
+            .in("driver_id", ids);
+          if (dde) throw dde;
+          result.driver_documents = dd;
+        } else {
+          result.driver_documents = [];
+        }
+      }
+    }
+
+    // Quality incidents
+    if (permissions?.read_quality) {
+      const q = supabaseAdmin
+        .from("quality_incidents")
+        .select("id, incident_type, incident_date, status, description, action_taken, driver_id, vehicle_id, source");
+      // Quality incidents don't have direct company_id, filter via vehicle/driver if needed
+      const { data, error } = await q;
+      if (error) throw error;
+      result.quality_incidents = data;
+    }
+
+    // Fleets
+    if (permissions?.read_fleets) {
+      const { data: fleets, error: fe } = await supabaseAdmin
+        .from("fleets")
+        .select("id, name, description");
+      if (fe) throw fe;
+      result.fleets = fleets;
+
+      const { data: links, error: le } = await supabaseAdmin
+        .from("vehicle_fleet_links")
+        .select("id, vehicle_id, fleet_id");
+      if (le) throw le;
+      result.vehicle_fleet_links = links;
     }
 
     return new Response(JSON.stringify(result), {

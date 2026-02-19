@@ -7,12 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CompanySearchSelect } from "@/components/shared/CompanySearchSelect";
 import { toast } from "sonner";
-import { Plus, Trash2, Copy, Key, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Copy, Key, AlertTriangle, Info, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import { fi } from "date-fns/locale";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+const ALL_PERMISSIONS = [
+  { key: "read_drivers", label: "Kuljettajatiedot", description: "Kuljettajien perustiedot" },
+  { key: "read_vehicles", label: "Autotiedot", description: "Ajoneuvojen perustiedot" },
+  { key: "read_hardware", label: "Laitetiedot", description: "Laitevarasto ja laitteet" },
+  { key: "read_documents", label: "Dokumenttitiedot", description: "Dokumenttien metatiedot" },
+  { key: "read_quality", label: "Laatupoikkeamat", description: "Laatupoikkeamien tiedot" },
+  { key: "read_fleets", label: "Fleettitiedot", description: "Fleet-kokonaisuudet ja linkitykset" },
+];
 
 function generateApiKey(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -30,16 +40,27 @@ async function sha256(message: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+const defaultPermissions: Record<string, boolean> = {
+  read_drivers: true,
+  read_vehicles: true,
+  read_hardware: false,
+  read_documents: false,
+  read_quality: false,
+  read_fleets: false,
+};
+
 export function ApiKeyManager() {
   const queryClient = useQueryClient();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showKeyDialog, setShowKeyDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [deleteKeyId, setDeleteKeyId] = useState<string | null>(null);
   const [generatedKey, setGeneratedKey] = useState("");
   const [newLabel, setNewLabel] = useState("");
-  const [newCompanyId, setNewCompanyId] = useState("");
-  const [permissions, setPermissions] = useState({ read_drivers: true, read_vehicles: true });
+  const [newCompanyId, setNewCompanyId] = useState<string | null>(null);
+  const [allCompanies, setAllCompanies] = useState(false);
+  const [permissions, setPermissions] = useState<Record<string, boolean>>({ ...defaultPermissions });
   const [copied, setCopied] = useState(false);
 
   const { data: apiKeys = [], isLoading } = useQuery({
@@ -76,7 +97,7 @@ export function ApiKeyManager() {
     mutationFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Ei kirjautunut sisään");
-      
+
       const plainKey = generateApiKey();
       const keyHash = await sha256(plainKey);
       const keyPrefix = plainKey.substring(0, 12) + "...";
@@ -85,11 +106,10 @@ export function ApiKeyManager() {
         key_hash: keyHash,
         key_prefix: keyPrefix,
         label: newLabel,
-        company_id: newCompanyId,
-        permissions,
+        permissions: permissions as any,
         created_by: user.id,
+        company_id: (!allCompanies && newCompanyId) ? newCompanyId : null,
       });
-
       if (error) throw error;
       return plainKey;
     },
@@ -98,8 +118,9 @@ export function ApiKeyManager() {
       setShowCreateDialog(false);
       setShowKeyDialog(true);
       setNewLabel("");
-      setNewCompanyId("");
-      setPermissions({ read_drivers: true, read_vehicles: true });
+      setNewCompanyId(null);
+      setAllCompanies(false);
+      setPermissions({ ...defaultPermissions });
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       toast.success("API-avain luotu onnistuneesti");
     },
@@ -124,7 +145,10 @@ export function ApiKeyManager() {
     },
   });
 
-  const getCompanyName = (id: string) => companies.find((c) => c.id === id)?.name || "Tuntematon";
+  const getCompanyName = (id: string | null) => {
+    if (!id) return "Kaikki yritykset";
+    return companies.find((c) => c.id === id)?.name || "Tuntematon";
+  };
   const getProfileName = (id: string) => profiles.find((p) => p.id === id)?.full_name || "Tuntematon";
 
   const handleCopy = () => {
@@ -134,16 +158,60 @@ export function ApiKeyManager() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const getPermissionLabels = (perms: Record<string, boolean> | null) => {
+    if (!perms) return "-";
+    const active = ALL_PERMISSIONS.filter((p) => perms[p.key]).map((p) => p.label);
+    return active.length > 0 ? active.join(", ") : "-";
+  };
+
+  const canCreate = newLabel && (allCompanies || newCompanyId);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <p className="text-sm text-muted-foreground">
-          Hallitse API-avaimia ulkoisia integraatioita varten. Avaimet mahdollistavat pääsyn yrityskohtaiseen dataan.
+          Hallitse API-avaimia ulkoisia integraatioita varten.
         </p>
-        <Button onClick={() => setShowCreateDialog(true)} size="sm">
-          <Plus className="h-4 w-4 mr-1" /> Luo uusi API-avain
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowGuide(!showGuide)}>
+            <BookOpen className="h-4 w-4 mr-1" /> Käyttöohje
+          </Button>
+          <Button onClick={() => setShowCreateDialog(true)} size="sm">
+            <Plus className="h-4 w-4 mr-1" /> Luo uusi API-avain
+          </Button>
+        </div>
       </div>
+
+      {/* Usage Guide */}
+      <Collapsible open={showGuide} onOpenChange={setShowGuide}>
+        <CollapsibleContent>
+          <div className="rounded-md border bg-muted/30 p-4 space-y-3 text-sm">
+            <h4 className="font-semibold flex items-center gap-2">
+              <Info className="h-4 w-4 text-primary" /> API-avaimen käyttöohje
+            </h4>
+            <div className="space-y-2">
+              <p><strong>1. Kutsu API:a</strong> lähettämällä HTTP GET -pyyntö:</p>
+              <pre className="bg-muted rounded p-2 text-xs overflow-x-auto font-mono">
+{`GET https://vbpzcyurwokjhrgkicvu.supabase.co/functions/v1/api-export
+Headers:
+  X-API-Key: sk_live_sinun_avaimesi_tähän`}
+              </pre>
+              <p><strong>2. Vaihtoehtoiset tavat välittää avain:</strong></p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li><code className="text-xs bg-muted px-1 rounded">Authorization: Bearer sk_live_...</code> header</li>
+                <li><code className="text-xs bg-muted px-1 rounded">?api_key=sk_live_...</code> query-parametri</li>
+              </ul>
+              <p><strong>3. Vastaus:</strong> JSON joka sisältää yrityksen datan avaimen oikeuksien mukaan.</p>
+              <p><strong>Esimerkki (cURL):</strong></p>
+              <pre className="bg-muted rounded p-2 text-xs overflow-x-auto font-mono">
+{`curl -H "X-API-Key: sk_live_abc123..." \\
+  https://vbpzcyurwokjhrgkicvu.supabase.co/functions/v1/api-export`}
+              </pre>
+              <p className="text-muted-foreground"><strong>Huom:</strong> Virheellinen avain palauttaa <code className="text-xs">401 Unauthorized</code>.</p>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {isLoading ? (
         <p className="text-muted-foreground text-sm">Ladataan...</p>
@@ -175,11 +243,7 @@ export function ApiKeyManager() {
                     <TableCell className="font-medium">{key.label}</TableCell>
                     <TableCell className="font-mono text-xs">{key.key_prefix}</TableCell>
                     <TableCell>{getCompanyName(key.company_id)}</TableCell>
-                    <TableCell className="text-xs">
-                      {perms?.read_drivers && "Kuljettajat"}
-                      {perms?.read_drivers && perms?.read_vehicles && ", "}
-                      {perms?.read_vehicles && "Autot"}
-                    </TableCell>
+                    <TableCell className="text-xs max-w-[200px] truncate">{getPermissionLabels(perms)}</TableCell>
                     <TableCell>{getProfileName(key.created_by)}</TableCell>
                     <TableCell>{format(new Date(key.created_at), "d.M.yyyy HH:mm", { locale: fi })}</TableCell>
                     <TableCell>
@@ -209,11 +273,11 @@ export function ApiKeyManager() {
 
       {/* Create Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Luo uusi API-avain</DialogTitle>
             <DialogDescription>
-              Anna avaimelle nimi ja valitse yritys, jonka dataan avain antaa pääsyn.
+              Määrittele avaimelle nimi, kohde ja oikeudet. Avain näytetään vain kerran luonnin jälkeen.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -225,38 +289,77 @@ export function ApiKeyManager() {
                 placeholder="esim. Kolmannen osapuolen integraatio"
               />
             </div>
-            <div>
+
+            <div className="space-y-2">
               <Label>Yritys</Label>
-              <Select value={newCompanyId} onValueChange={setNewCompanyId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Valitse yritys" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center space-x-2 mb-2">
+                <Checkbox
+                  id="all_companies"
+                  checked={allCompanies}
+                  onCheckedChange={(v) => {
+                    setAllCompanies(!!v);
+                    if (v) setNewCompanyId(null);
+                  }}
+                />
+                <label htmlFor="all_companies" className="text-sm font-medium">
+                  Kaikki yritykset
+                </label>
+              </div>
+              {!allCompanies && (
+                <CompanySearchSelect
+                  value={newCompanyId || ""}
+                  onChange={(id) => setNewCompanyId(id || null)}
+                  placeholder="Hae yritystä nimellä tai Y-tunnuksella..."
+                />
+              )}
             </div>
+
             <div className="space-y-2">
               <Label>Oikeudet</Label>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="perm_drivers"
-                  checked={permissions.read_drivers}
-                  onCheckedChange={(v) => setPermissions((p) => ({ ...p, read_drivers: !!v }))}
-                />
-                <label htmlFor="perm_drivers" className="text-sm">Kuljettajatiedot</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {ALL_PERMISSIONS.map((perm) => (
+                  <div key={perm.key} className="flex items-start space-x-2">
+                    <Checkbox
+                      id={`perm_${perm.key}`}
+                      checked={permissions[perm.key] || false}
+                      onCheckedChange={(v) =>
+                        setPermissions((p) => ({ ...p, [perm.key]: !!v }))
+                      }
+                    />
+                    <div>
+                      <label htmlFor={`perm_${perm.key}`} className="text-sm font-medium leading-none">
+                        {perm.label}
+                      </label>
+                      <p className="text-xs text-muted-foreground">{perm.description}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="perm_vehicles"
-                  checked={permissions.read_vehicles}
-                  onCheckedChange={(v) => setPermissions((p) => ({ ...p, read_vehicles: !!v }))}
-                />
-                <label htmlFor="perm_vehicles" className="text-sm">Autotiedot</label>
+              <div className="flex gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const all: Record<string, boolean> = {};
+                    ALL_PERMISSIONS.forEach((p) => (all[p.key] = true));
+                    setPermissions(all);
+                  }}
+                >
+                  Valitse kaikki
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const none: Record<string, boolean> = {};
+                    ALL_PERMISSIONS.forEach((p) => (none[p.key] = false));
+                    setPermissions(none);
+                  }}
+                >
+                  Poista valinnat
+                </Button>
               </div>
             </div>
           </div>
@@ -264,7 +367,7 @@ export function ApiKeyManager() {
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Peruuta</Button>
             <Button
               onClick={() => createMutation.mutate()}
-              disabled={!newLabel || !newCompanyId || createMutation.isPending}
+              disabled={!canCreate || createMutation.isPending}
             >
               {createMutation.isPending ? "Luodaan..." : "Luo avain"}
             </Button>
@@ -273,16 +376,15 @@ export function ApiKeyManager() {
       </Dialog>
 
       {/* Show Key Dialog (one time only) */}
-      <Dialog open={showKeyDialog} onOpenChange={(open) => { if (!open) { setGeneratedKey(""); } setShowKeyDialog(open); }}>
+      <Dialog open={showKeyDialog} onOpenChange={(open) => { if (!open) setGeneratedKey(""); setShowKeyDialog(open); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
               API-avain luotu
             </DialogTitle>
             <DialogDescription>
               <strong className="text-destructive">Tärkeää:</strong> Kopioi tämä avain nyt. Sitä ei näytetä enää uudelleen.
-              Avaimesta tallennetaan tietokantaan vain salattu tiiviste (hash).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
