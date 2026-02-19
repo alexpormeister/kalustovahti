@@ -367,6 +367,7 @@ export default function Hardware() {
           <Select
             value={formData.device_type}
             onValueChange={(value) => setFormData({ ...formData, device_type: value })}
+            disabled={!canEdit}
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -383,6 +384,7 @@ export default function Hardware() {
             onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
             required
             placeholder="SN-001234"
+            disabled={!canEdit}
           />
         </div>
       </div>
@@ -394,6 +396,7 @@ export default function Hardware() {
             value={formData.sim_number}
             onChange={(e) => setFormData({ ...formData, sim_number: e.target.value })}
             placeholder="+358..."
+            disabled={!canEdit}
           />
         </div>
       )}
@@ -404,25 +407,34 @@ export default function Hardware() {
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Laitteen lisätiedot..."
+          disabled={!canEdit}
         />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label>Liitetty autoon</Label>
-          <VehicleSearchSelect
-            vehicles={vehicles}
-            value={formData.vehicle_id}
-            onChange={(value) => setFormData({ ...formData, vehicle_id: value })}
-          />
+          {canEdit ? (
+            <VehicleSearchSelect
+              vehicles={vehicles}
+              value={formData.vehicle_id}
+              onChange={(value) => setFormData({ ...formData, vehicle_id: value })}
+            />
+          ) : (
+            <Input value={formData.vehicle_id ? vehicles.find(v => v.id === formData.vehicle_id)?.vehicle_number + ' - ' + vehicles.find(v => v.id === formData.vehicle_id)?.registration_number || '' : 'Ei liitetty'} disabled />
+          )}
         </div>
         <div>
           <Label>Yritys</Label>
-          <CompanySearchSelect
-            companies={companies}
-            value={formData.company_id}
-            onChange={(value) => setFormData({ ...formData, company_id: value })}
-          />
+          {canEdit ? (
+            <CompanySearchSelect
+              companies={companies}
+              value={formData.company_id}
+              onChange={(value) => setFormData({ ...formData, company_id: value })}
+            />
+          ) : (
+            <Input value={formData.company_id ? companies.find(c => c.id === formData.company_id)?.name || '' : 'Ei määritetty'} disabled />
+          )}
         </div>
       </div>
 
@@ -432,6 +444,7 @@ export default function Hardware() {
         <Select
           value={formData.linked_device_id || "none"}
           onValueChange={(value) => setFormData({ ...formData, linked_device_id: value === "none" ? "" : value })}
+          disabled={!canEdit}
         >
           <SelectTrigger><SelectValue placeholder="Valitse laite" /></SelectTrigger>
           <SelectContent>
@@ -453,6 +466,7 @@ export default function Hardware() {
         <Select
           value={formData.status}
           onValueChange={(value: DeviceStatus) => setFormData({ ...formData, status: value })}
+          disabled={!canEdit}
         >
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -466,9 +480,9 @@ export default function Hardware() {
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={() => { setIsAddDialogOpen(false); setSelectedDevice(null); resetForm(); }}>
-          Peruuta
+          {canEdit ? "Peruuta" : "Sulje"}
         </Button>
-        <Button type="submit">Tallenna</Button>
+        {canEdit && <Button type="submit">Tallenna</Button>}
       </div>
     </form>
   );
@@ -598,7 +612,7 @@ export default function Hardware() {
         <Dialog open={!!selectedDevice} onOpenChange={(open) => { if (!open) { setSelectedDevice(null); resetForm(); } }}>
           <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Muokkaa laitetta: {selectedDevice?.serial_number}</DialogTitle>
+              <DialogTitle>{canEdit ? "Muokkaa laitetta" : "Laitteen tiedot"}: {selectedDevice?.serial_number}</DialogTitle>
             </DialogHeader>
             {deviceFormJSX}
           </DialogContent>

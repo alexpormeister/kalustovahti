@@ -416,7 +416,7 @@ export default function CompanyProfile() {
                                 if (error) { toast.error("Virhe"); return; }
                                 const url = URL.createObjectURL(data); const a = document.createElement("a"); a.href = url; a.download = att.file_name; a.click(); URL.revokeObjectURL(url);
                               }}><Download className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeSharedAttachmentMutation.mutate(att.id)}><Trash2 className="h-4 w-4" /></Button>
+                              {canEdit && <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeSharedAttachmentMutation.mutate(att.id)}><Trash2 className="h-4 w-4" /></Button>}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -449,7 +449,7 @@ export default function CompanyProfile() {
                               <div className="flex gap-1">
                                 <Button variant="ghost" size="icon" onClick={() => handlePreview(doc)}><Eye className="h-4 w-4" /></Button>
                                 <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)}><Download className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(doc)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                {canEdit && <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(doc)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>}
                               </div>
                             </TableCell>
                           </TableRow>
