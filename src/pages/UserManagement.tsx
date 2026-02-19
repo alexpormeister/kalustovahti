@@ -496,28 +496,28 @@ export default function UserManagement() {
                     onOpenChange={(open) => setExpandedUserId(open ? user.id : null)}
                   >
                     <div className="border rounded-lg">
-                      <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-4">
-                          <div>
-                            <p className="font-medium">{user.full_name || "Ei nimeä"}</p>
-                            {user.email && <p className="text-sm text-muted-foreground">{user.email}</p>}
+                       <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 gap-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{user.full_name || "Ei nimeä"}</p>
+                            {user.email && <p className="text-sm text-muted-foreground truncate">{user.email}</p>}
                             {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
                           </div>
-                          <Badge className={user.role ? roleColors[user.role as AppRole] : ""}>
+                          <Badge className={`shrink-0 w-fit ${user.role ? roleColors[user.role as AppRole] : ""}`}>
                             {user.role ? roleLabels[user.role as AppRole] : "—"}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                           {canEdit && <>
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(user)}>
                             <Edit2 className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => { setResetPasswordUserId(user.id); setResetPasswordValue(""); }}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setResetPasswordUserId(user.id); setResetPasswordValue(""); }}>
                             <KeyRound className="h-4 w-4" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </AlertDialogTrigger>
@@ -541,7 +541,7 @@ export default function UserManagement() {
                           </AlertDialog>
                           </>}
                           <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
                               <ChevronDown className={`h-4 w-4 transition-transform ${expandedUserId === user.id ? "rotate-180" : ""}`} />
                             </Button>
                           </CollapsibleTrigger>
