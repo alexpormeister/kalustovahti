@@ -34,7 +34,7 @@ export type Database = {
       }
       api_keys: {
         Row: {
-          company_id: string
+          company_id: string | null
           created_at: string
           created_by: string
           id: string
@@ -45,7 +45,7 @@ export type Database = {
           permissions: Json
         }
         Insert: {
-          company_id: string
+          company_id?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -56,7 +56,7 @@ export type Database = {
           permissions?: Json
         }
         Update: {
-          company_id?: string
+          company_id?: string | null
           created_at?: string
           created_by?: string
           id?: string
