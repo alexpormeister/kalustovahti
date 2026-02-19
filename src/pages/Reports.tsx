@@ -70,7 +70,7 @@ const columnLabels: Record<string, Record<string, string>> = {
   drivers: { driver_number: "Nro", full_name: "Nimi", phone: "Puhelin", email: "Email", city: "Kunta", province: "Maakunta", status: "Tila" },
   companies: { name: "Nimi", business_id: "Y-tunnus", contact_person: "Yhteyshenkilö", contact_email: "Email", contact_phone: "Puhelin", contract_status: "Sopimustila" },
   hardware: { serial_number: "Sarjanumero", device_type: "Tyyppi", status: "Tila", sim_number: "SIM", created_at: "Luotu" },
-  quality_incidents: { incident_date: "Päivä", incident_type: "Tyyppi", vehicle_reg: "Ajoneuvo", driver_name: "Kuljettaja", description: "Kuvaus", action_taken: "Toimenpiteet", status: "Tila", handler: "Käsittelijä", company_name: "Yritys" },
+  quality_incidents: { incident_date: "Päivä", incident_type: "Tyyppi", vehicle_reg: "Ajoneuvo", vehicle_city: "Kaupunki", driver_name: "Kuljettaja", description: "Kuvaus", action_taken: "Toimenpiteet", status: "Tila", handler: "Käsittelijä", company_name: "Yritys" },
   documents: { file_name: "Tiedosto", status: "Tila", valid_from: "Alkaen", valid_until: "Saakka", created_at: "Luotu" },
 };
 
@@ -79,7 +79,7 @@ const chartFields: Record<string, { field: string; label: string }[]> = {
   drivers: [{ field: "status", label: "Tila" }, { field: "city", label: "Kunta" }, { field: "province", label: "Maakunta" }],
   companies: [{ field: "contract_status", label: "Sopimustila" }],
   hardware: [{ field: "status", label: "Tila" }, { field: "device_type", label: "Tyyppi" }],
-  quality_incidents: [{ field: "status", label: "Tila" }, { field: "incident_type", label: "Tyyppi" }],
+  quality_incidents: [{ field: "status", label: "Tila" }, { field: "incident_type", label: "Tyyppi" }, { field: "vehicle_city", label: "Kaupunki (auton)" }],
   documents: [{ field: "status", label: "Tila" }],
 };
 
@@ -175,11 +175,12 @@ export default function Reports() {
           if (error) throw error;
           // Enrich with vehicle/driver/handler/company names
           const enriched = await Promise.all((raw || []).map(async (r: any) => {
-            let vehicle_reg = "—", driver_name = "—", handler = "—", company_name = "—";
+            let vehicle_reg = "—", driver_name = "—", handler = "—", company_name = "—", vehicle_city = "—";
             if (r.vehicle_id) {
-              const { data: v } = await supabase.from("vehicles").select("registration_number, company_id").eq("id", r.vehicle_id).single();
+              const { data: v } = await supabase.from("vehicles").select("registration_number, company_id, city").eq("id", r.vehicle_id).single();
               if (v) {
                 vehicle_reg = v.registration_number;
+                vehicle_city = v.city || "—";
                 if (v.company_id) {
                   const { data: c } = await supabase.from("companies").select("name").eq("id", v.company_id).single();
                   if (c) company_name = c.name;
@@ -195,7 +196,7 @@ export default function Reports() {
               const { data: p } = await supabase.from("profiles").select("full_name").eq("id", handlerId).single();
               if (p) handler = p.full_name || "—";
             }
-            return { ...r, vehicle_reg, driver_name, handler, company_name };
+            return { ...r, vehicle_reg, driver_name, handler, company_name, vehicle_city };
           }));
           return enriched;
         }
