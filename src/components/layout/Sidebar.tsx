@@ -1,9 +1,20 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, Car, Users, Building2, Settings, LogOut, Tag,
-  Smartphone, ClipboardCheck, ShieldCheck, FileCheck, ChevronDown,
-  Wrench, FileSpreadsheet,
+  LayoutDashboard,
+  Car,
+  Users,
+  Building2,
+  Settings,
+  LogOut,
+  Tag,
+  Smartphone,
+  ClipboardCheck,
+  ShieldCheck,
+  FileCheck,
+  ChevronDown,
+  Wrench,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePermissions, PageKey } from "@/hooks/usePermissions";
@@ -26,9 +37,7 @@ interface NavigationGroup {
 
 const navigationGroups: NavigationGroup[] = [
   {
-    items: [
-      { name: "Hallintapaneeli", href: "/dashboard", icon: LayoutDashboard, pageKey: "dashboard" },
-    ],
+    items: [{ name: "Hallintapaneeli", href: "/dashboard", icon: LayoutDashboard, pageKey: "dashboard" }],
   },
   {
     label: "Hallinta",
@@ -43,8 +52,8 @@ const navigationGroups: NavigationGroup[] = [
   {
     items: [
       { name: "Dokumentit", href: "/dokumentit", icon: FileCheck, pageKey: "dokumentit" },
-      
-      { name: "Laadunvalvonta", href: "/laadunvalvonta", icon: ClipboardCheck, pageKey: "laadunvalvonta" },
+
+      { name: "Laadunvalvonta", href: "/laadunvalvonta", icon: ShieldCheck, pageKey: "laadunvalvonta" },
       { name: "Raportit", href: "/raportit", icon: FileSpreadsheet, pageKey: "raportit" },
     ],
   },
@@ -81,7 +90,9 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
     const initial = new Set<string>();
     navigationGroups.forEach((g) => {
       if (g.label && g.defaultCollapsed) {
-        const isOnGroupPage = g.items.some((item) => location.pathname === item.href || location.pathname.startsWith(item.href + "/"));
+        const isOnGroupPage = g.items.some(
+          (item) => location.pathname === item.href || location.pathname.startsWith(item.href + "/"),
+        );
         if (!isOnGroupPage) initial.add(g.label);
       }
     });
@@ -93,7 +104,9 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
 
   // Listen for auth state changes to trigger re-fetch
   useState(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setAuthUserId(session?.user?.id || null);
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -111,15 +124,10 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
         supabase.from("user_roles").select("role").eq("user_id", authUserId).single(),
       ]);
       const roleName = roleRes.data?.role || "user";
-      const { data: roleInfo } = await supabase
-        .from("roles")
-        .select("display_name")
-        .eq("name", roleName)
-        .maybeSingle();
+      const { data: roleInfo } = await supabase.from("roles").select("display_name").eq("name", roleName).maybeSingle();
       const profile = profileRes.data;
-      const displayName = profile?.full_name || 
-        [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || 
-        "Käyttäjä";
+      const displayName =
+        profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Käyttäjä";
       return {
         name: displayName,
         role: roleName,
@@ -149,7 +157,12 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
   };
 
   return (
-    <aside className={cn("bg-sidebar border-r border-sidebar-border", isMobile ? "h-full w-full" : "fixed left-0 top-0 z-40 h-screen w-64")}>
+    <aside
+      className={cn(
+        "bg-sidebar border-r border-sidebar-border",
+        isMobile ? "h-full w-full" : "fixed left-0 top-0 z-40 h-screen w-64",
+      )}
+    >
       <div className="flex h-full flex-col">
         {!isMobile && (
           <div className="flex h-16 items-center gap-3 px-6 border-b border-sidebar-border">
@@ -189,9 +202,15 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
                   {!isCollapsed && (
                     <div className="space-y-1 mt-1">
                       {visibleItems.map((item) => {
-                        const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + "/");
+                        const isActive =
+                          location.pathname === item.href || location.pathname.startsWith(item.href + "/");
                         return (
-                          <Link key={item.name} to={item.href} onClick={handleNavClick} className={cn("sidebar-nav-item pl-6", isActive && "sidebar-nav-item-active")}>
+                          <Link
+                            key={item.name}
+                            to={item.href}
+                            onClick={handleNavClick}
+                            className={cn("sidebar-nav-item pl-6", isActive && "sidebar-nav-item-active")}
+                          >
                             <item.icon className="h-5 w-5" />
                             <span className="font-medium">{item.name}</span>
                           </Link>
@@ -208,7 +227,12 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
                 {visibleItems.map((item) => {
                   const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + "/");
                   return (
-                    <Link key={item.name} to={item.href} onClick={handleNavClick} className={cn("sidebar-nav-item", isActive && "sidebar-nav-item-active")}>
+                    <Link
+                      key={item.name}
+                      to={item.href}
+                      onClick={handleNavClick}
+                      className={cn("sidebar-nav-item", isActive && "sidebar-nav-item-active")}
+                    >
                       <item.icon className="h-5 w-5" />
                       <span className="font-medium">{item.name}</span>
                     </Link>
@@ -217,11 +241,13 @@ export function Sidebar({ onLogout, onNavigate, isMobile }: SidebarProps) {
               </div>
             );
           })}
-
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          <button onClick={onLogout} className="sidebar-nav-item w-full text-left hover:bg-destructive/20 hover:text-destructive">
+          <button
+            onClick={onLogout}
+            className="sidebar-nav-item w-full text-left hover:bg-destructive/20 hover:text-destructive"
+          >
             <LogOut className="h-5 w-5" />
             <span className="font-medium">Kirjaudu ulos</span>
           </button>
