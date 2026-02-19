@@ -575,9 +575,7 @@ export default function Hardware() {
                           <Badge className={statusColors[device.status]}>{statusLabels[device.status]}</Badge>
                         </TableCell>
                         <TableCell>
-                          <div onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><ExternalLink className="h-4 w-4" /></Button>
-                          </div>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleEdit(device); }}><ExternalLink className="h-4 w-4" /></Button>
                         </TableCell>
                       </TableRow>
                     ))}

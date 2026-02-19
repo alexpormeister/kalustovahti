@@ -10,7 +10,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Users, Search, Trash2, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, Tag } from "lucide-react";
+import { Plus, Users, Search, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, Tag } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -503,8 +503,7 @@ export default function Drivers() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(driver)}><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => { if (confirm("Haluatko varmasti poistaa?")) deleteMutation.mutate(driver.id); }}><Trash2 className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(driver)}><ExternalLink className="h-4 w-4" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>
