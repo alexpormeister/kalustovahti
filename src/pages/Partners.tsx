@@ -19,6 +19,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Building2, Plus, Search, ExternalLink, Filter, ChevronsUpDown, Tag } from "lucide-react";
+import { useCanEdit } from "@/components/auth/ProtectedPage";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { usePagination } from "@/hooks/usePagination";
@@ -52,6 +53,7 @@ const contractStatusColors: Record<ContractStatus, string> = {
 
 export default function Partners() {
   const navigate = useNavigate();
+  const canEdit = useCanEdit("autoilijat");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -247,13 +249,13 @@ export default function Partners() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div><h1 className="text-3xl font-bold text-foreground">Autoilijat</h1><p className="text-muted-foreground mt-1">Hallitse sopimusyrityksiä ja autoilijoita</p></div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          {canEdit && <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild><Button className="gap-2 w-full sm:w-auto"><Plus className="h-4 w-4" />Lisää autoilija</Button></DialogTrigger>
             <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Lisää uusi autoilija</DialogTitle></DialogHeader>
               {companyFormJSX}
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
 
         {/* Search + Filters */}
@@ -337,7 +339,7 @@ export default function Partners() {
                         <TableCell>{company.contract_status && <Badge className={contractStatusColors[company.contract_status]}>{contractStatusLabels[company.contract_status]}</Badge>}</TableCell>
                         <TableCell>
                           <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(company)}><ExternalLink className="h-4 w-4" /></Button>
+                            {canEdit && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(company)}><ExternalLink className="h-4 w-4" /></Button>}
                           </div>
                         </TableCell>
                       </TableRow>

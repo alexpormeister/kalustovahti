@@ -45,6 +45,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Users, Edit2, Trash2, UserPlus, Search, ChevronDown, History, KeyRound } from "lucide-react";
+import { useCanEdit } from "@/components/auth/ProtectedPage";
 import { toast } from "sonner";
 import { usePermissions } from "@/hooks/usePermissions";
 import { ProtectedPage } from "@/components/auth/ProtectedPage";
@@ -96,6 +97,7 @@ const actionColors: Record<string, string> = {
 export default function UserManagement() {
   const queryClient = useQueryClient();
   const { isSystemAdmin } = usePermissions();
+  const canEdit = useCanEdit("kayttajat");
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -370,7 +372,7 @@ export default function UserManagement() {
               Hallitse käyttäjiä, rooleja ja tarkastele käyttäjäkohtaisia lokeja
             </p>
           </div>
-          <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
+          {canEdit && <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <UserPlus className="h-4 w-4" />
@@ -440,7 +442,7 @@ export default function UserManagement() {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
 
         {/* Search */}
@@ -506,6 +508,7 @@ export default function UserManagement() {
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
+                          {canEdit && <>
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
                             <Edit2 className="h-4 w-4" />
                           </Button>
@@ -536,6 +539,7 @@ export default function UserManagement() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
+                          </>}
                           <CollapsibleTrigger asChild>
                             <Button variant="ghost" size="icon">
                               <ChevronDown className={`h-4 w-4 transition-transform ${expandedUserId === user.id ? "rotate-180" : ""}`} />

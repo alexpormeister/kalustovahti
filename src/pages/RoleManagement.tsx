@@ -33,6 +33,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Shield, Pencil, Trash2, Lock } from "lucide-react";
+import { useCanEdit } from "@/components/auth/ProtectedPage";
 import { toast } from "sonner";
 import { ProtectedPage } from "@/components/auth/ProtectedPage";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -77,6 +78,7 @@ export default function RoleManagement() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isSystemAdmin, isLoading: permLoading } = usePermissions();
+  const canEdit = useCanEdit("roolit");
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
@@ -306,7 +308,7 @@ export default function RoleManagement() {
               Hallitse käyttäjärooleja ja niiden oikeuksia
             </p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          {canEdit && <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -364,7 +366,7 @@ export default function RoleManagement() {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
 
         {/* Edit Dialog */}
@@ -442,6 +444,7 @@ export default function RoleManagement() {
                     </CardHeader>
                     <CardContent>
                       <div className="flex gap-2">
+                        {canEdit && <>
                         <Button
                           variant="outline"
                           size="sm"
@@ -466,6 +469,7 @@ export default function RoleManagement() {
                             Poista
                           </Button>
                         )}
+                        </>}
                       </div>
                     </CardContent>
                   </Card>
@@ -517,14 +521,14 @@ export default function RoleManagement() {
                                   <div className="flex items-center justify-center gap-3">
                                     <Switch
                                       checked={isSystemAdmin || perm?.can_view || false}
-                                      disabled={isSystemAdmin}
+                                      disabled={isSystemAdmin || !canEdit}
                                       onCheckedChange={(checked) =>
                                         handlePermissionChange(role.id, pageKey, "view", checked)
                                       }
                                     />
                                     <Switch
                                       checked={isSystemAdmin || perm?.can_edit || false}
-                                      disabled={isSystemAdmin}
+                                      disabled={isSystemAdmin || !canEdit}
                                       onCheckedChange={(checked) =>
                                         handlePermissionChange(role.id, pageKey, "edit", checked)
                                       }

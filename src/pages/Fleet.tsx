@@ -16,6 +16,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { Car, Plus, Search, Filter, X, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, Check, ChevronsUpDown } from "lucide-react";
+import { useCanEdit } from "@/components/auth/ProtectedPage";
 import { CompanySearchSelect } from "@/components/shared/CompanySearchSelect";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -91,6 +92,7 @@ function DeviceSearchSelect({ devices, value, onChange, placeholder, deviceType 
 
 export default function Fleet() {
   const navigate = useNavigate();
+  const canEdit = useCanEdit("kalusto");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [attributeFilters, setAttributeFilters] = useState<string[]>([]);
@@ -380,13 +382,13 @@ export default function Fleet() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div><h1 className="text-3xl font-bold text-foreground">Autot</h1><p className="text-muted-foreground mt-1">Hallitse ajoneuvokantaa</p></div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          {canEdit && <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild><Button className="gap-2 w-full sm:w-auto"><Plus className="h-4 w-4" />Lisää ajoneuvo</Button></DialogTrigger>
             <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Lisää uusi ajoneuvo</DialogTitle></DialogHeader>
               {vehicleFormJSX}
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
 
         {/* Search and filters */}
@@ -480,7 +482,7 @@ export default function Fleet() {
                           <TableCell><StatusBadge status={vehicle.status} /></TableCell>
                           <TableCell>
                             <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(vehicle)}><ExternalLink className="h-4 w-4" /></Button>
+                              {canEdit && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(vehicle)}><ExternalLink className="h-4 w-4" /></Button>}
                             </div>
                           </TableCell>
                         </TableRow>
