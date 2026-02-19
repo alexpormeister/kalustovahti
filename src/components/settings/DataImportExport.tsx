@@ -45,6 +45,9 @@ const allTables: TableConfig[] = [
       { key: "registration_number", label: "Rekisterinumero" },
       { key: "brand", label: "Merkki" },
       { key: "model", label: "Malli" },
+      { key: "year_model", label: "Vuosimalli" },
+      { key: "fuel_type", label: "Käyttövoima" },
+      { key: "co2_emissions", label: "CO2-päästöt (g/km)" },
       { key: "status", label: "Tila" },
       { key: "city", label: "Kaupunki" },
       { key: "meter_serial_number", label: "Mittarin sarjanumero" },
@@ -99,9 +102,37 @@ const allTables: TableConfig[] = [
       { key: "action_taken", label: "Toimenpiteet" },
       { key: "status", label: "Tila" },
       { key: "source", label: "Lähde" },
+      { key: "driver_name", label: "Kuljettaja" },
+      { key: "driver_number", label: "Kuljettajanumero" },
+      { key: "vehicle_number", label: "Autonumero" },
+      { key: "vehicle_registration", label: "Rekisterinumero" },
     ],
   },
 ];
+
+// Field value documentation for import guidance
+const fieldValueDocs: Record<string, Record<string, string>> = {
+  vehicles: {
+    status: "active = Aktiivinen, inactive = Ei käytössä, maintenance = Huollossa",
+    fuel_type: "Bensiini, Diesel, Sähkö, Hybridi, Kaasu",
+  },
+  companies: {
+    contract_status: "active = Aktiivinen, inactive = Ei aktiivinen, pending = Odottaa",
+  },
+  drivers: {
+    status: "active = Aktiivinen, inactive = Ei aktiivinen",
+    driver_license_valid_until: "Muoto: VVVV-KK-PP (esim. 2026-12-31)",
+  },
+  hardware_devices: {
+    device_type: "Tekninen avain ylläpidossa määritellyistä laitetyypeistä (esim. payment_terminal, sim_card, tablet)",
+    status: "available = Vapaana, installed = Asennettu, maintenance = Huollossa, decommissioned = Poistettu käytöstä",
+  },
+  quality_incidents: {
+    incident_type: "customer_complaint = Asiakasvalitus, service_quality = Palvelun laatu, vehicle_condition = Ajoneuvon kunto, driver_behavior = Kuljettajan käytös, safety_issue = Turvallisuus, billing_issue = Laskutus, other = Muu",
+    status: "new = Uusi, investigating = Tutkinnassa, resolved = Ratkaistu, closed = Suljettu",
+    incident_date: "Muoto: VVVV-KK-PP (esim. 2026-02-19)",
+  },
+};
 
 // Build column labels map from allTables
 const columnLabelsMap: Record<string, Record<string, string>> = {};
@@ -203,12 +234,40 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
 
         if (!data || data.length === 0) continue;
 
+        // For quality_incidents, enrich with driver/vehicle data
+        let enrichedData = data as any[];
+        if (tableKey === "quality_incidents") {
+          // Fetch drivers and vehicles for lookups
+          const driverIds = [...new Set(enrichedData.filter(r => r.driver_id).map(r => r.driver_id))];
+          const vehicleIds = [...new Set(enrichedData.filter(r => r.vehicle_id).map(r => r.vehicle_id))];
+
+          let driversMap: Record<string, any> = {};
+          let vehiclesMap: Record<string, any> = {};
+
+          if (driverIds.length > 0) {
+            const { data: drivers } = await supabase.from("drivers").select("id, full_name, driver_number").in("id", driverIds);
+            (drivers || []).forEach((d: any) => { driversMap[d.id] = d; });
+          }
+          if (vehicleIds.length > 0) {
+            const { data: vehicles } = await supabase.from("vehicles").select("id, vehicle_number, registration_number").in("id", vehicleIds);
+            (vehicles || []).forEach((v: any) => { vehiclesMap[v.id] = v; });
+          }
+
+          enrichedData = enrichedData.map((row: any) => ({
+            ...row,
+            driver_name: driversMap[row.driver_id]?.full_name || "",
+            driver_number: driversMap[row.driver_id]?.driver_number || "",
+            vehicle_number: vehiclesMap[row.vehicle_id]?.vehicle_number || "",
+            vehicle_registration: vehiclesMap[row.vehicle_id]?.registration_number || "",
+          }));
+        }
+
         const columns = tableConfig.columns.map((c) => c.key);
         const headers = tableConfig.columns.map((c) => c.label);
 
         const csvContent = [
           headers.join(";"),
-          ...(data as any[]).map((row) =>
+          ...enrichedData.map((row: any) =>
             columns
               .map((col) => {
                 const value = row[col];
@@ -486,8 +545,24 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
             </div>
 
             {importTableConfig && (
-              <div className="text-xs text-muted-foreground">
-                Sarakkeet: {importTableConfig.columns.map((c) => c.label).join(", ")}
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground">
+                  Sarakkeet: {importTableConfig.columns.map((c) => c.label).join(", ")}
+                </div>
+                {fieldValueDocs[selectedImportTable] && (
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
+                    <p className="text-xs font-medium text-foreground">📖 Kenttien sallitut arvot:</p>
+                    {Object.entries(fieldValueDocs[selectedImportTable]).map(([field, doc]) => {
+                      const colLabel = importTableConfig.columns.find(c => c.key === field)?.label || field;
+                      return (
+                        <div key={field} className="text-xs">
+                          <span className="font-medium text-foreground">{colLabel}:</span>{" "}
+                          <span className="text-muted-foreground">{doc}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
