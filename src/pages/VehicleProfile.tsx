@@ -22,6 +22,7 @@ import {
 import { ArrowLeft, Car, History, Tag, Building2, Smartphone, CreditCard, Pencil, Save, X, Layers, Plus, ExternalLink } from "lucide-react";
 import { CompanySearchSelect } from "@/components/shared/CompanySearchSelect";
 import { format } from "date-fns";
+import { useCanEdit } from "@/components/auth/ProtectedPage";
 import { fi } from "date-fns/locale";
 import { toast } from "sonner";
 
@@ -29,6 +30,7 @@ export default function VehicleProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const canEdit = useCanEdit("kalusto");
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
   const [isAddDeviceOpen, setIsAddDeviceOpen] = useState(false);
@@ -294,14 +296,14 @@ export default function VehicleProfile() {
                     <Car className="h-5 w-5 text-primary" />
                     Ajoneuvon tiedot
                   </CardTitle>
-                  {!isEditing ? (
+                  {canEdit && (!isEditing ? (
                     <Button variant="outline" size="sm" onClick={startEditing}><Pencil className="h-4 w-4 mr-1" />Muokkaa</Button>
                   ) : (
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}><X className="h-4 w-4 mr-1" />Peruuta</Button>
                       <Button size="sm" onClick={() => updateMutation.mutate(editForm)} disabled={updateMutation.isPending}><Save className="h-4 w-4 mr-1" />Tallenna</Button>
                     </div>
-                  )}
+                  ))}
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -453,9 +455,9 @@ export default function VehicleProfile() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2"><Smartphone className="h-5 w-5 text-primary" />Liitetyt laitteet</CardTitle>
-                  <Button size="sm" onClick={() => setIsAddDeviceOpen(true)} className="gap-1">
+                  {canEdit && <Button size="sm" onClick={() => setIsAddDeviceOpen(true)} className="gap-1">
                     <Plus className="h-4 w-4" />Lisää laite
-                  </Button>
+                  </Button>}
                 </div>
               </CardHeader>
               <CardContent>

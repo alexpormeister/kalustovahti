@@ -22,6 +22,7 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import { Plus, Search, Smartphone, Check, ChevronsUpDown, ExternalLink } from "lucide-react";
+import { useCanEdit } from "@/components/auth/ProtectedPage";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { usePagination } from "@/hooks/usePagination";
@@ -142,6 +143,7 @@ const statusColors: Record<DeviceStatus, string> = {
 };
 
 export default function Hardware() {
+  const canEdit = useCanEdit("laitteet");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<string>("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -479,7 +481,7 @@ export default function Hardware() {
             <h1 className="text-3xl font-bold text-foreground">Laitevarasto</h1>
             <p className="text-muted-foreground mt-1">Hallitse laitteita ja niiden linkityksiä</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          {canEdit && <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2 w-full sm:w-auto" onClick={() => { resetForm(); setFormData((prev) => ({ ...prev, device_type: effectiveTab })); }}>
                 <Plus className="h-4 w-4" />
@@ -490,7 +492,7 @@ export default function Hardware() {
               <DialogHeader><DialogTitle>Lisää uusi laite</DialogTitle></DialogHeader>
               {deviceFormJSX}
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
 
         {/* Stats Cards - Dynamic */}
@@ -575,7 +577,7 @@ export default function Hardware() {
                           <Badge className={statusColors[device.status]}>{statusLabels[device.status]}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleEdit(device); }}><ExternalLink className="h-4 w-4" /></Button>
+                          {canEdit && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleEdit(device); }}><ExternalLink className="h-4 w-4" /></Button>}
                         </TableCell>
                       </TableRow>
                     ))}

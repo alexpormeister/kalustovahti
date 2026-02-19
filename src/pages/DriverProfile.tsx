@@ -25,11 +25,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isBefore, addDays } from "date-fns";
+import { useCanEdit } from "@/components/auth/ProtectedPage";
 import { fi } from "date-fns/locale";
 
 export default function DriverProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const canEdit = useCanEdit("kuljettajat");
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "info";
   const queryClient = useQueryClient();
@@ -335,14 +337,14 @@ export default function DriverProfile() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2"><User className="h-5 w-5 text-primary" />Kuljettajan tiedot</CardTitle>
-                  {!isEditing ? (
+                  {canEdit && (!isEditing ? (
                     <Button variant="outline" size="sm" onClick={startEditing}><Pencil className="h-4 w-4 mr-1" />Muokkaa</Button>
                   ) : (
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}><X className="h-4 w-4 mr-1" />Peruuta</Button>
                       <Button size="sm" onClick={() => updateMutation.mutate(editForm)} disabled={updateMutation.isPending}><Save className="h-4 w-4 mr-1" />Tallenna</Button>
                     </div>
-                  )}
+                  ))}
                 </div>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -449,7 +451,7 @@ export default function DriverProfile() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2"><Paperclip className="h-5 w-5 text-primary" />Jaetut liitteet</CardTitle>
-                  {unlinkedAttachments.length > 0 && (
+                  {canEdit && unlinkedAttachments.length > 0 && (
                     <Select value="none" onValueChange={(v) => { if (v !== "none") addSharedAttachmentMutation.mutate(v); }}>
                       <SelectTrigger className="w-[220px]"><SelectValue placeholder="Lisää liite..." /></SelectTrigger>
                       <SelectContent>
@@ -483,7 +485,7 @@ export default function DriverProfile() {
                                 if (error) { toast.error("Virhe"); return; }
                                 const url = URL.createObjectURL(data); const a = document.createElement("a"); a.href = url; a.download = att.file_name; a.click(); URL.revokeObjectURL(url);
                               }}><Download className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeSharedAttachmentMutation.mutate(att.id)}><Trash2 className="h-4 w-4" /></Button>
+                              {canEdit && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeSharedAttachmentMutation.mutate(att.id)}><Trash2 className="h-4 w-4" /></Button>}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -498,7 +500,7 @@ export default function DriverProfile() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" />Dokumentit</CardTitle>
-                  <Button size="sm" className="gap-2" onClick={() => setIsUploadOpen(true)}><Upload className="h-4 w-4" />Lataa dokumentti</Button>
+                  {canEdit && <Button size="sm" className="gap-2" onClick={() => setIsUploadOpen(true)}><Upload className="h-4 w-4" />Lataa dokumentti</Button>}
                 </div>
               </CardHeader>
               <CardContent>
@@ -524,7 +526,7 @@ export default function DriverProfile() {
                               <div className="flex gap-1">
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePreview(doc)}><Eye className="h-4 w-4" /></Button>
                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(doc)}><Download className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteMutation.mutate(doc)}><Trash2 className="h-4 w-4" /></Button>
+                                {canEdit && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteMutation.mutate(doc)}><Trash2 className="h-4 w-4" /></Button>}
                               </div>
                             </TableCell>
                           </TableRow>

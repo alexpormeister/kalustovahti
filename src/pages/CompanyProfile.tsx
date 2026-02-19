@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isBefore, addDays } from "date-fns";
+import { useCanEdit } from "@/components/auth/ProtectedPage";
 import { fi } from "date-fns/locale";
 
 const statusColors: Record<string, string> = {
@@ -37,6 +38,7 @@ const statusLabels: Record<string, string> = { active: "Voimassa", expired: "Van
 export default function CompanyProfile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const canEdit = useCanEdit("autoilijat");
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "info";
   const queryClient = useQueryClient();
@@ -269,9 +271,9 @@ export default function CompanyProfile() {
               {company.business_id && <p className="text-muted-foreground">Y-tunnus: {company.business_id}</p>}
             </div>
           </div>
-          <Button className="gap-2 w-full sm:w-auto" onClick={() => setIsUploadOpen(true)}>
+          {canEdit && <Button className="gap-2 w-full sm:w-auto" onClick={() => setIsUploadOpen(true)}>
             <Upload className="h-4 w-4" />Lataa dokumentti
-          </Button>
+          </Button>}
         </div>
 
         {missingDocs.length > 0 && (
@@ -299,14 +301,14 @@ export default function CompanyProfile() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5 text-primary" />Yrityksen tiedot</CardTitle>
-                  {!isEditing ? (
+                  {canEdit && (!isEditing ? (
                     <Button variant="outline" size="sm" onClick={startEditing}><Pencil className="h-4 w-4 mr-1" />Muokkaa</Button>
                   ) : (
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}><X className="h-4 w-4 mr-1" />Peruuta</Button>
                       <Button size="sm" onClick={() => updateMutation.mutate(editForm)} disabled={updateMutation.isPending}><Save className="h-4 w-4 mr-1" />Tallenna</Button>
                     </div>
-                  )}
+                  ))}
                 </div>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -353,12 +355,12 @@ export default function CompanyProfile() {
                     companyAttributes.map((attr: any) => (
                       <Badge key={attr.id} variant="secondary" className="gap-1">
                         {attr.name}
-                        <button className="ml-1 hover:text-destructive" onClick={() => removeCompanyAttrMutation.mutate(attr.linkId)}>×</button>
+                        {canEdit && <button className="ml-1 hover:text-destructive" onClick={() => removeCompanyAttrMutation.mutate(attr.linkId)}>×</button>}
                       </Badge>
                     ))
                   )}
                 </div>
-                {allCompanyAttributes.filter((a: any) => !companyAttributes.some((ca: any) => ca.id === a.id)).length > 0 && (
+                {canEdit && allCompanyAttributes.filter((a: any) => !companyAttributes.some((ca: any) => ca.id === a.id)).length > 0 && (
                   <Select value="none" onValueChange={(v) => { if (v !== "none") addCompanyAttrMutation.mutate(v); }}>
                     <SelectTrigger className="w-[200px]"><SelectValue placeholder="Lisää attribuutti" /></SelectTrigger>
                     <SelectContent>
@@ -380,7 +382,7 @@ export default function CompanyProfile() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2"><Paperclip className="h-5 w-5 text-primary" />Jaetut liitteet</CardTitle>
-                  {unlinkedAttachments.length > 0 && (
+                  {canEdit && unlinkedAttachments.length > 0 && (
                     <Select value="none" onValueChange={(v) => { if (v !== "none") addSharedAttachmentMutation.mutate(v); }}>
                       <SelectTrigger className="w-[220px]"><SelectValue placeholder="Lisää liite..." /></SelectTrigger>
                       <SelectContent>

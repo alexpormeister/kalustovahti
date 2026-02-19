@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Users, Search, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, Tag } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useCanEdit } from "@/components/auth/ProtectedPage";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -82,6 +83,7 @@ const validateHetu = (hetu: string): boolean => {
 export default function Drivers() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const canEdit = useCanEdit("kuljettajat");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<DriverForm>(defaultForm);
@@ -302,7 +304,7 @@ export default function Drivers() {
             <h1 className="text-3xl font-bold text-foreground">Kuljettajat</h1>
             <p className="text-muted-foreground mt-1">Hallitse kuljettajien tietoja</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+          {canEdit && <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button className="gap-2 w-full sm:w-auto" onClick={handleOpenCreate}>
                 <Plus className="h-4 w-4" />Lisää kuljettaja
@@ -425,7 +427,7 @@ export default function Drivers() {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
 
         <div className="relative max-w-md">

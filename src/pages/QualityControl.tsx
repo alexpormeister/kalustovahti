@@ -28,6 +28,7 @@ import {
   Plus, Search, Filter, ClipboardCheck, CalendarIcon,
   Check, ChevronsUpDown, Pencil, X
 } from "lucide-react";
+import { useCanEdit } from "@/components/auth/ProtectedPage";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { fi } from "date-fns/locale";
@@ -85,6 +86,7 @@ const statusColors: Record<IncidentStatus, string> = {
 
 export default function QualityControl() {
   const queryClient = useQueryClient();
+  const canEdit = useCanEdit("laadunvalvonta");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -459,7 +461,7 @@ export default function QualityControl() {
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Laadunvalvonta</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">Hallitse laatutapauksia ja asiakaspalautteita</p>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          {canEdit && <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2 w-full sm:w-auto"><Plus className="h-4 w-4" />Lisää tapaus</Button>
             </DialogTrigger>
@@ -467,7 +469,7 @@ export default function QualityControl() {
               <DialogHeader><DialogTitle>Lisää uusi laatutapaus</DialogTitle></DialogHeader>
               {incidentFormJSX}
             </DialogContent>
-          </Dialog>
+          </Dialog>}
         </div>
 
         {/* Search and Filters */}
@@ -548,7 +550,7 @@ export default function QualityControl() {
             </div>
           ) : (
             filteredIncidents.map((incident) => (
-              <div key={incident.id} className="glass-card rounded-lg p-4 space-y-3" onClick={() => handleEdit(incident)}>
+              <div key={incident.id} className="glass-card rounded-lg p-4 space-y-3" onClick={() => canEdit && handleEdit(incident)}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -557,7 +559,7 @@ export default function QualityControl() {
                     </div>
                     <p className="text-sm font-medium">{format(new Date(incident.incident_date), "d.M.yyyy", { locale: fi })}</p>
                   </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"><Pencil className="h-4 w-4" /></Button>
+                  {canEdit && <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"><Pencil className="h-4 w-4" /></Button>}
                 </div>
                 <p className="text-sm text-muted-foreground line-clamp-2">{incident.description}</p>
                 {incident.action_taken && <p className="text-xs text-muted-foreground">Toimenpiteet: {incident.action_taken}</p>}
@@ -607,7 +609,7 @@ export default function QualityControl() {
                       <TableCell><Badge variant="outline" className={cn("border", statusColors[incident.status])}>{statusLabels[incident.status]}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground">{incident.updater?.full_name || incident.creator?.full_name || "—"}</TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(incident)}><Pencil className="h-4 w-4" /></Button>
+                        {canEdit && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(incident)}><Pencil className="h-4 w-4" /></Button>}
                       </TableCell>
                     </TableRow>
                   ))
