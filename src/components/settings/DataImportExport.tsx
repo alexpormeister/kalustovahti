@@ -183,7 +183,7 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
   const [importPreview, setImportPreview] = useState<ImportPreviewData | null>(null);
   const [importFileContent, setImportFileContent] = useState<string | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [importResults, setImportResults] = useState<{ success: number; failed: number } | null>(null);
+  const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isAdmin) {
@@ -397,8 +397,38 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
       const dataRows = lines.slice(1).map((l) => parseCSVLine(l));
       let success = 0;
       let failed = 0;
+      const errors: string[] = [];
 
-      for (const row of dataRows) {
+      // For quality_incidents, pre-fetch lookups and get current user
+      let driversLookup: Record<string, string> = {};
+      let vehiclesLookup: Record<string, string> = {};
+      let currentUserId: string | null = null;
+
+      if (selectedImportTable === "quality_incidents") {
+        const { data: { user } } = await supabase.auth.getUser();
+        currentUserId = user?.id || null;
+        if (!currentUserId) {
+          toast.error("Käyttäjä ei ole kirjautunut sisään");
+          setIsImporting(false);
+          return;
+        }
+
+        const { data: drivers } = await supabase.from("drivers").select("id, full_name, driver_number");
+        (drivers || []).forEach((d: any) => {
+          if (d.full_name) driversLookup[d.full_name.toLowerCase()] = d.id;
+          if (d.driver_number) driversLookup[d.driver_number.toLowerCase()] = d.id;
+        });
+
+        const { data: vehicles } = await supabase.from("vehicles").select("id, vehicle_number, registration_number");
+        (vehicles || []).forEach((v: any) => {
+          if (v.vehicle_number) vehiclesLookup[v.vehicle_number.toLowerCase()] = v.id;
+          if (v.registration_number) vehiclesLookup[v.registration_number.toLowerCase()] = v.id;
+        });
+      }
+
+      for (let rowIdx = 0; rowIdx < dataRows.length; rowIdx++) {
+        const row = dataRows[rowIdx];
+        const rowNum = rowIdx + 2; // +2 for header row + 1-indexed
         try {
           const record: Record<string, string | null> = {};
           Object.entries(importPreview.mappings).forEach(([sourceIndex, targetColumn]) => {
@@ -410,25 +440,59 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
 
           const validationError = validateRecord(record, selectedImportTable);
           if (validationError) {
-            console.warn("Validation failed:", validationError);
+            errors.push(`Rivi ${rowNum}: ${validationError}`);
             failed++;
             continue;
           }
 
+          // For quality_incidents, resolve names to IDs and add required fields
+          if (selectedImportTable === "quality_incidents") {
+            // Resolve driver
+            if (record.driver_name) {
+              const driverId = driversLookup[record.driver_name.toLowerCase()];
+              if (driverId) record.driver_id = driverId;
+              delete record.driver_name;
+            }
+            if (record.driver_number && !record.driver_id) {
+              const driverId = driversLookup[record.driver_number.toLowerCase()];
+              if (driverId) record.driver_id = driverId;
+              delete record.driver_number;
+            } else {
+              delete record.driver_number;
+            }
+            // Resolve vehicle
+            if (record.vehicle_number) {
+              const vehicleId = vehiclesLookup[record.vehicle_number.toLowerCase()];
+              if (vehicleId) record.vehicle_id = vehicleId;
+              delete record.vehicle_number;
+            }
+            if (record.vehicle_registration && !record.vehicle_id) {
+              const vehicleId = vehiclesLookup[record.vehicle_registration.toLowerCase()];
+              if (vehicleId) record.vehicle_id = vehicleId;
+              delete record.vehicle_registration;
+            } else {
+              delete record.vehicle_registration;
+            }
+            // Add created_by
+            record.created_by = currentUserId;
+          }
+
           const { error } = await supabase.from(selectedImportTable as any).insert(record as any);
           if (error) {
+            errors.push(`Rivi ${rowNum}: ${error.message}`);
             failed++;
           } else {
             success++;
           }
-        } catch {
+        } catch (e: any) {
+          errors.push(`Rivi ${rowNum}: ${e?.message || "Tuntematon virhe"}`);
           failed++;
         }
       }
 
-      setImportResults({ success, failed });
+      setImportResults({ success, failed, errors });
       if (success > 0) toast.success(`${success} riviä tuotu onnistuneesti`);
-      if (failed > 0) toast.error(`${failed} riviä epäonnistui`);
+      if (failed > 0) toast.error(`${failed} riviä epäonnistui — katso virheraportti`);
     } catch (error) {
       console.error("Import error:", error);
       toast.error("Virhe tuonnissa");
@@ -674,16 +738,29 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
               </div>
 
               {importResults && (
-                <Alert variant={importResults.failed > 0 ? "destructive" : "default"}>
-                  {importResults.failed > 0 ? (
-                    <AlertCircle className="h-4 w-4" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4" />
+                <div className="space-y-2">
+                  <Alert variant={importResults.failed > 0 ? "destructive" : "default"}>
+                    {importResults.failed > 0 ? (
+                      <AlertCircle className="h-4 w-4" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    <AlertDescription>
+                      Tuonti valmis: {importResults.success} onnistui, {importResults.failed} epäonnistui.
+                    </AlertDescription>
+                  </Alert>
+                  {importResults.errors.length > 0 && (
+                    <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 max-h-48 overflow-auto">
+                      <p className="text-xs font-medium text-destructive mb-2">Virheet ({importResults.errors.length}):</p>
+                      {importResults.errors.slice(0, 50).map((err, i) => (
+                        <p key={i} className="text-xs text-destructive/80">{err}</p>
+                      ))}
+                      {importResults.errors.length > 50 && (
+                        <p className="text-xs text-destructive/60 mt-1">...ja {importResults.errors.length - 50} muuta virhettä</p>
+                      )}
+                    </div>
                   )}
-                  <AlertDescription>
-                    Tuonti valmis: {importResults.success} onnistui, {importResults.failed} epäonnistui.
-                  </AlertDescription>
-                </Alert>
+                </div>
               )}
 
               <div className="flex justify-end gap-2">
