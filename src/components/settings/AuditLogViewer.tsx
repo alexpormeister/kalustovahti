@@ -228,26 +228,41 @@ export function AuditLogViewer({ isAdmin }: { isAdmin: boolean }) {
     setTableFilter("all"); setActionFilter("all"); setSearchQuery(""); setDateFrom(""); setDateTo(""); setPage(0);
   };
 
+  // Build a clear Finnish description of what happened
   const formatChangesSummary = (log: AuditLog): string => {
-    if (log.action === "view_ssn") return log.description || "HETU-tiedon katselu";
-    if (log.action === "export") return log.description || "Raportti viety";
+    // Always prefer the database-generated description if available
+    if (log.description) return log.description;
+
+    const tableName = tableLabels[log.table_name] || log.table_name;
     const changes = getChanges(log.old_data, log.new_data, log.action);
-    if (changes.length === 0) return log.description || "—";
+    const findName = (data: Json | null): string => {
+      if (!data || typeof data !== "object" || Array.isArray(data)) return "";
+      const d = data as Record<string, unknown>;
+      return String(d.full_name || d.name || d.vehicle_number || d.serial_number || d.file_name || d.display_name || "");
+    };
+
+    if (log.action === "view_ssn") return "HETU-tiedon katselu";
+    if (log.action === "export") return "Raportti viety";
+
+    if (log.action === "create") {
+      const name = findName(log.new_data);
+      return name ? `Lisäsi kohteen "${name}" (${tableName})` : `Lisäsi uuden kohteen (${tableName})`;
+    }
     if (log.action === "update") {
-      return changes.slice(0, 2).map(c => {
+      const name = findName(log.new_data);
+      const target = name ? `"${name}"` : "kohdetta";
+      if (changes.length === 0) return `Muokkasi ${target} (${tableName})`;
+      const detail = changes.slice(0, 2).map(c => {
         const label = fieldLabels[c.field] || c.field;
         return `${label}: "${resolveValue(c.field, c.oldValue)}" → "${resolveValue(c.field, c.newValue)}"`;
       }).join(", ") + (changes.length > 2 ? ` (+${changes.length - 2} muuta)` : "");
-    }
-    if (log.action === "create") {
-      const nameField = changes.find(c => ["full_name", "name", "vehicle_number", "serial_number", "file_name"].includes(c.field));
-      return nameField ? `Uusi: ${nameField.newValue}` : "Uusi tietue luotu";
+      return `Muokkasi ${target}: ${detail}`;
     }
     if (log.action === "delete") {
-      const nameField = changes.find(c => ["full_name", "name", "vehicle_number", "serial_number", "file_name"].includes(c.field));
-      return nameField ? `Poistettu: ${nameField.oldValue}` : "Tietue poistettu";
+      const name = findName(log.old_data);
+      return name ? `Poisti kohteen "${name}" (${tableName})` : `Poisti kohteen (${tableName})`;
     }
-    return log.description || "—";
+    return "—";
   };
 
   return (
@@ -276,7 +291,7 @@ export function AuditLogViewer({ isAdmin }: { isAdmin: boolean }) {
             <Select value={tableFilter} onValueChange={v => { setTableFilter(v); setPage(0); }}>
               <SelectTrigger><SelectValue placeholder="Taulukko" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Kaikki taulukot</SelectItem>
+                <SelectItem value="all">Kaikki kohteet</SelectItem>
                 {Object.entries(tableLabels).map(([key, label]) => (
                   <SelectItem key={key} value={key}>{label}</SelectItem>
                 ))}
@@ -319,9 +334,9 @@ export function AuditLogViewer({ isAdmin }: { isAdmin: boolean }) {
                         <div className="flex items-center gap-1">Toiminto <ArrowUpDown className="h-3 w-3" /></div>
                       </TableHead>
                       <TableHead className="w-28 cursor-pointer" onClick={() => toggleSort("table_name")}>
-                        <div className="flex items-center gap-1">Taulukko <ArrowUpDown className="h-3 w-3" /></div>
+                        <div className="flex items-center gap-1">Kohde <ArrowUpDown className="h-3 w-3" /></div>
                       </TableHead>
-                      <TableHead>Muutokset</TableHead>
+                      <TableHead>Kuvaus</TableHead>
                       <TableHead className="w-16"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -374,7 +389,7 @@ export function AuditLogViewer({ isAdmin }: { isAdmin: boolean }) {
                 <div><p className="text-muted-foreground">Aika</p><p className="font-medium">{format(new Date(selectedLog.created_at), "d.M.yyyy HH:mm:ss", { locale: fi })}</p></div>
                 <div><p className="text-muted-foreground">Käyttäjä</p><p className="font-medium">{users[selectedLog.user_id] || "Järjestelmä"}</p></div>
                 <div><p className="text-muted-foreground">Toiminto</p><Badge className={actionColors[selectedLog.action] || ""}>{actionLabels[selectedLog.action] || selectedLog.action}</Badge></div>
-                <div><p className="text-muted-foreground">Taulukko</p><p className="font-medium">{tableLabels[selectedLog.table_name] || selectedLog.table_name}</p></div>
+                <div><p className="text-muted-foreground">Kohde</p><p className="font-medium">{tableLabels[selectedLog.table_name] || selectedLog.table_name}</p></div>
               </div>
 
               {selectedLog.description && (
