@@ -447,34 +447,37 @@ export function DataImportExport({ isAdmin }: { isAdmin: boolean }) {
 
           // For quality_incidents, resolve names to IDs and add required fields
           if (selectedImportTable === "quality_incidents") {
-            // Resolve driver
+            // Resolve driver by name or number
             if (record.driver_name) {
               const driverId = driversLookup[record.driver_name.toLowerCase()];
               if (driverId) record.driver_id = driverId;
-              delete record.driver_name;
             }
             if (record.driver_number && !record.driver_id) {
               const driverId = driversLookup[record.driver_number.toLowerCase()];
               if (driverId) record.driver_id = driverId;
-              delete record.driver_number;
-            } else {
-              delete record.driver_number;
             }
-            // Resolve vehicle
+            // Resolve vehicle by number or registration
             if (record.vehicle_number) {
               const vehicleId = vehiclesLookup[record.vehicle_number.toLowerCase()];
               if (vehicleId) record.vehicle_id = vehicleId;
-              delete record.vehicle_number;
             }
             if (record.vehicle_registration && !record.vehicle_id) {
               const vehicleId = vehiclesLookup[record.vehicle_registration.toLowerCase()];
               if (vehicleId) record.vehicle_id = vehicleId;
-              delete record.vehicle_registration;
-            } else {
-              delete record.vehicle_registration;
             }
             // Add created_by
             record.created_by = currentUserId;
+
+            // Only keep columns that exist in quality_incidents table
+            const allowedCols = new Set([
+              "incident_date", "incident_type", "description", "action_taken",
+              "status", "source", "driver_id", "vehicle_id", "created_by",
+            ]);
+            for (const key of Object.keys(record)) {
+              if (!allowedCols.has(key)) {
+                delete record[key];
+              }
+            }
           }
 
           const { error } = await supabase.from(selectedImportTable as any).insert(record as any);
