@@ -1,1 +1,4 @@
 project_id = "vbpzcyurwokjhrgkicvu"
+
+[functions.api-export]
+verify_jwt = false

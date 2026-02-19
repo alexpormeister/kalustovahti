@@ -32,6 +32,57 @@ export type Database = {
         }
         Relationships: []
       }
+      api_keys: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          key_hash: string
+          key_prefix: string
+          label: string
+          last_used_at: string | null
+          permissions: Json
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          key_hash: string
+          key_prefix: string
+          label: string
+          last_used_at?: string | null
+          permissions?: Json
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          label?: string
+          last_used_at?: string | null
+          permissions?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "api_keys_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -1451,9 +1502,19 @@ export type Database = {
             Returns: boolean
           }
         | { Args: { _role: string; _user_id: string }; Returns: boolean }
+      hash_api_key: { Args: { plain_key: string }; Returns: string }
       is_company_member: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
+      }
+      touch_api_key: { Args: { p_key_hash: string }; Returns: undefined }
+      validate_api_key: {
+        Args: { p_key_hash: string }
+        Returns: {
+          api_key_id: string
+          company_id: string
+          permissions: Json
+        }[]
       }
     }
     Enums: {
